@@ -94,8 +94,11 @@ make O=/mnt/dev_ext_4tb/open/build/linux/mainline -j$(nproc)
 
 ### Bug Reproduction with Syzkaller
 
+**Prerequisites:** Docker must be installed and running.
+
 ```bash
-# 1. Setup Syzkaller environment
+# 1. Setup Syzkaller environment (requires Docker)
+sudo systemctl start docker  # if not running
 /mnt/dev_ext_4tb/infra/scripts/syzkaller/setup_syzkaller.sh
 
 # 2. Build Syzkaller-compatible kernel
