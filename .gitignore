@@ -1,0 +1,39 @@
+# ---- Never track heavy/volatile dev data ----
+open/src/
+open/build/
+open/logs/
+
+# QEMU runtime artifacts (generated)
+open/vm/linux/*
+!open/vm/linux/.keep
+
+# If you keep generated docs/build outputs elsewhere, ignore them too
+*.log
+*.tmp
+*.swp
+.*.swp
+*~
+.DS_Store
+
+# Common build artifacts (just in case)
+*.o
+*.a
+*.so
+*.ko
+*.mod
+*.cmd
+*.d
+*.gcno
+*.gcda
+*.gz
+*.xz
+*.bz2
+*.cpio
+*.img
+*.qcow2
+
+# Local contents
+lost+found/
+.cursorignore
+infra/scripts/disk_tools/
+private_work/*

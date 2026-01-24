@@ -1,0 +1,147 @@
+# Linux Kernel QEMU Test Environment (Terminal-only)
+
+This directory contains a **minimal, script-driven QEMU environment** used to boot
+**locally compiled Linux kernels** for upstream testing and development.
+
+The goal of this setup is:
+- fast iteration on kernel builds
+- zero GUI dependency
+- reproducible, portable workflows
+- minimal per-kernel setup overhead
+
+This environment is intentionally simple and evolves incrementally as needs grow
+(debugging, syzkaller, automation, etc.).
+
+---
+
+## Directory Layout (High-level)
+
+This VM setup depends on the following fixed layout on the external dev disk:
+
+/mnt/dev_ext_4tb/
+├── open/
+│ ├── src/
+│ │ └── kernel/linux # Official Linux kernel source (git)
+│ ├── build/
+│ │ └── linux/<profile>/ # Out-of-tree kernel builds (bzImage, modules)
+│ ├── vm/
+│ │ └── linux/ # This directory (QEMU runtime assets)
+│ └── logs/
+│ └── qemu/ # QEMU boot logs
+└── infra/
+└── scripts/
+└── qemu_linux/ # Host-side scripts (run_qemu_kernel.sh, helpers)
+
+
+**Important rule**
+Kernel **source and build directories are always separate**.
+QEMU scripts consume kernel artifacts from `open/build`, never from the source tree.
+
+---
+
+## What This Environment Is (and Is Not)
+
+### ✔ This *is*
+- A terminal-only QEMU setup (serial console / SSH)
+- Optimized for repeated kernel boots
+- Script-first (no manual QEMU command typing)
+- Suitable for upstream validation and CI-like testing
+
+### ✘ This is *not*
+- A desktop VM
+- A distro installer environment
+- A GUI-managed VM (virt-manager, GNOME Boxes, etc.)
+
+---
+
+## Typical Workflow
+
+1. **Build kernel (out-of-tree)**
+   Kernel is built under:
+
+/mnt/dev_ext_4tb/open/build/linux/<profile>/
+
+2. **Boot kernel in QEMU**
+infra/scripts/qemu_linux/run_qemu_kernel.sh
+
+3. **Iterate**
+- rebuild kernel
+- re-run the script
+- no VM reconfiguration needed
+
+---
+
+## Root Filesystem Strategy
+
+Initial setup uses the **simplest viable root filesystem**, such as:
+- initramfs (BusyBox-based), or
+- minimal qcow2 image
+
+Design goals:
+- rootfs should *not* need rebuilding for every kernel change
+- kernel should be swappable by pointing to a new `bzImage`
+
+Details are documented inside the scripts themselves.
+
+---
+
+## Boot Automation
+
+Guest boot automation (v1) is intentionally minimal:
+- init scripts or systemd service inside the guest
+- no external orchestration tools
+
+Future extensions may include:
+- snapshot mode
+- cloud-init–style hooks
+- shared folders (9p / virtiofs)
+- syzkaller-specific profiles
+
+---
+
+## Logging
+
+All QEMU output is logged under:
+
+/mnt/dev_ext_4tb/open/logs/qemu/
+
+
+Logs are kept per run to allow:
+- regression comparison
+- upstream testing records
+- offline debugging
+
+---
+
+## Safety & Portability Notes
+
+- All mounts are UUID-based.
+- Scripts are idempotent and safe to re-run.
+- The entire setup is portable across machines where the disk is mounted at:
+/mnt/dev_ext_4tb
+
+
+---
+
+## Philosophy
+
+> Minimal first.
+> Automate early.
+> Add complexity only when justified.
+
+This environment is deliberately conservative and transparent.
+Every layer added later should earn its place.
+
+---
+
+## Status
+
+- [x] Disk + permissions setup
+- [x] Kernel source + build layout
+- [ ] Minimal rootfs
+- [ ] QEMU boot script
+- [ ] Boot-time automation hooks
+
+(Progress tracked implicitly via scripts, not tooling.)
+
+
