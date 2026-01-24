@@ -95,11 +95,19 @@ make O=/mnt/dev_ext_4tb/open/build/linux/mainline -j$(nproc)
 ### Bug Reproduction with Syzkaller
 
 ```bash
-# Setup Syzkaller (future enhancement)
-# Scripts will be added to infra/scripts/syzkaller/
+# 1. Setup Syzkaller environment
+/mnt/dev_ext_4tb/infra/scripts/syzkaller/setup_syzkaller.sh
 
-# Reproduce issues from Syzbot reports
-# Integrate fuzzing into kernel testing workflow
+# 2. Build Syzkaller-compatible kernel
+/mnt/dev_ext_4tb/infra/scripts/syzkaller/build_syzkaller_kernel.sh
+
+# 3. Boot with Syzkaller support
+/mnt/dev_ext_4tb/infra/scripts/syzkaller/run_qemu_syzkaller.sh
+
+# 4. Start fuzzing
+/mnt/dev_ext_4tb/infra/scripts/syzkaller/run_syzkaller.sh
+
+# In guest VM, Syzkaller binaries are auto-mounted at /mnt/host/syzkaller/bin/
 ```
 
 ## 📚 Documentation
@@ -147,7 +155,7 @@ Environment designed for team development with clear separation of concerns.
 - [x] SSH access to test VMs
 - [x] Comprehensive logging
 - [x] Script-based automation
-- [ ] Syzkaller integration
+- [x] Syzkaller integration with shared directory
 - [ ] Multi-profile build support
 - [ ] Enhanced debugging tools
 - [ ] CI/CD integration
