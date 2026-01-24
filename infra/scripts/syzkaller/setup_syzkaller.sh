@@ -1,4 +1,22 @@
 #!/bin/bash
+#
+# Syzkaller Setup Script
+#
+# Copyright (C) 2026 Linux Kernel Development Team
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 # Syzkaller Setup Script
 # Downloads, builds, and configures Syzkaller for Linux kernel fuzzing
@@ -80,9 +98,23 @@ fi
 echo "4. Building Syzkaller..."
 cd "$SRC_DIR"
 
-# Use all available CPU cores for build
-export GOPROXY=https://proxy.golang.org,direct
-make -j"$(nproc)"
+# Use syz-env for proper build environment (provides correct Go version and dependencies)
+echo "Using syz-env for building Syzkaller..."
+if ! command -v docker &> /dev/null; then
+    echo "ERROR: Docker is required for building Syzkaller with syz-env"
+    echo "Please install Docker: https://docs.docker.com/engine/install/"
+    exit 1
+fi
+
+# Check if Docker daemon is running
+if ! docker info &> /dev/null; then
+    echo "ERROR: Docker daemon is not running"
+    echo "Please start Docker service or run: sudo systemctl start docker"
+    exit 1
+fi
+
+# Use syz-env to build
+./tools/syz-env make -j"$(nproc)"
 
 # Install binaries to build directory
 echo "5. Installing binaries..."
@@ -90,14 +122,26 @@ cp -r bin/* "$BUILD_DIR/bin/"
 
 # Verify build
 echo "6. Verifying build..."
-if [ ! -f "$BUILD_DIR/bin/syz-manager" ]; then
+if [ ! -f "$SRC_DIR/bin/syz-manager" ] && [ ! -f "$BUILD_DIR/bin/syz-manager" ]; then
     echo "ERROR: syz-manager not found after build"
+    echo "Checking build output locations..."
+    find "$SRC_DIR" -name "syz-manager" 2>/dev/null || echo "Not found in SRC_DIR"
+    find "$BUILD_DIR" -name "syz-manager" 2>/dev/null || echo "Not found in BUILD_DIR"
     exit 1
 fi
 
-if [ ! -f "$BUILD_DIR/bin/syz-fuzzer" ]; then
+if [ ! -f "$SRC_DIR/bin/syz-fuzzer" ] && [ ! -f "$BUILD_DIR/bin/syz-fuzzer" ]; then
     echo "ERROR: syz-fuzzer not found after build"
+    echo "Checking build output locations..."
+    find "$SRC_DIR" -name "syz-fuzzer" 2>/dev/null || echo "Not found in SRC_DIR"
+    find "$BUILD_DIR" -name "syz-fuzzer" 2>/dev/null || echo "Not found in BUILD_DIR"
     exit 1
+fi
+
+# Copy binaries to build directory if they're in src directory
+if [ -f "$SRC_DIR/bin/syz-manager" ]; then
+    echo "Copying binaries from source to build directory..."
+    cp -r "$SRC_DIR/bin/"* "$BUILD_DIR/bin/" 2>/dev/null || true
 fi
 
 # Create shared directory structure
