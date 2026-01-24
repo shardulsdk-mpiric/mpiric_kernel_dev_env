@@ -84,6 +84,19 @@ echo "3. Downloading Syzkaller source..."
 if [ -d "$SRC_DIR/.git" ]; then
     echo "Syzkaller source already exists, updating..."
     cd "$SRC_DIR"
+    # Handle detached HEAD state by checking out master/main branch first
+    CURRENT_BRANCH=$(git branch --show-current)
+    if [ -z "$CURRENT_BRANCH" ]; then
+        # We're in detached HEAD, checkout master or main
+        if git show-ref --verify --quiet refs/heads/master; then
+            git checkout master
+        elif git show-ref --verify --quiet refs/heads/main; then
+            git checkout main
+        else
+            echo "ERROR: No master or main branch found in Syzkaller repo"
+            exit 1
+        fi
+    fi
     git pull
 else
     echo "Cloning Syzkaller repository..."
