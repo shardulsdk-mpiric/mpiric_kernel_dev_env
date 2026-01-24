@@ -138,10 +138,12 @@ Every layer added later should earn its place.
 
 - [x] Disk + permissions setup
 - [x] Kernel source + build layout
-- [ ] Minimal rootfs
-- [ ] QEMU boot script
-- [ ] Boot-time automation hooks
+- [x] Minimal rootfs (BusyBox initramfs)
+- [x] QEMU boot script
+- [x] Boot-time automation hooks
+- [x] SSH access to guest VMs
+- [x] Comprehensive development roadmap (TODO.md)
 
-(Progress tracked implicitly via scripts, not tooling.)
+(Progress tracked via git commits and TODO.md. Scripts provide the implementation.)
 
 
