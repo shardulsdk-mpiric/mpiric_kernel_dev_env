@@ -17,6 +17,8 @@ This repository provides a complete environment for Linux kernel development, te
 /mnt/dev_ext_4tb/                    # Root (assumes external disk mount)
 ├── open/                           # Main collaborative development area
 │   ├── src/kernel/linux/          # Official Linux kernel source (git)
+│   │   └── tools/scripts/linux/   # Kernel development tools (apply_configs.sh)
+│   │       └── configs/to_load/  # Kernel config files to apply
 │   ├── build/linux/<profile>/     # Out-of-tree kernel builds (bzImage, modules)
 │   ├── vm/linux/                  # QEMU runtime assets (initramfs, configs)
 │   │   └── docs/linux/            # QEMU environment documentation
@@ -91,6 +93,39 @@ make O=/mnt/dev_ext_4tb/open/build/linux/mainline -j$(nproc)
 
 # 4. Iterate: modify → build → test
 ```
+
+### Kernel Configuration Management
+
+The environment includes a script to manage kernel configuration files across multiple build directories:
+
+**Location:** `open/src/kernel/tools/scripts/linux/apply_configs.sh`
+
+**Features:**
+- Automatically finds the latest build directory (by modification time)
+- Applies configs from `open/src/kernel/tools/configs/to_load/*`
+- Supports selective Syzbot config application
+- Works with out-of-tree builds
+
+**Usage:**
+
+```bash
+# Apply configs to latest build directory (default)
+/mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh
+
+# Apply configs to specific build directory
+/mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh \
+    --build-dir /mnt/dev_ext_4tb/open/build/kernel/linux/mpiric/2026_01_25_142350_010_v7_test
+
+# Apply standard configs + selective Syzbot config
+/mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh \
+    --syzbot-config /path/to/syzbot_reported.config
+```
+
+**Config Files:**
+- Standard configs: Place `.config`-style files in `open/src/kernel/tools/configs/to_load/`
+- Syzbot configs: Use `--syzbot-config` to selectively apply relevant configs (toolchain/version info is automatically skipped)
+
+After applying configs, run `make olddefconfig` in your build directory to resolve dependencies.
 
 ### Bug Reproduction with Syzkaller
 

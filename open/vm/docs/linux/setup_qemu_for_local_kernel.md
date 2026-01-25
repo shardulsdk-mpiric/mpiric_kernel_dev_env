@@ -40,10 +40,24 @@ Run this from your kernel source directory:
     # 1. Configure
     make O=/mnt/dev_ext_4tb/open/build/linux/mainline defconfig
 
-    # 2. Optional: Enable KVM/Virtio flags for better QEMU performance
+    # 2. Optional: Apply custom configs
+    # Use the apply_configs.sh script to apply configs from config files:
+    /mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh \
+        --build-dir /mnt/dev_ext_4tb/open/build/linux/mainline
+    
+    # Or let it auto-detect the latest build directory:
+    /mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh
+    
+    # Place config files in: open/src/kernel/tools/configs/to_load/
+    # See README.md for detailed usage and Syzbot config support.
+
+    # 3. Resolve dependencies (after applying configs)
+    make O=/mnt/dev_ext_4tb/open/build/linux/mainline olddefconfig
+
+    # 4. Optional: Enable KVM/Virtio flags for better QEMU performance
     # Edit .config or use scripts/config
 
-    # 3. Build
+    # 5. Build
     make O=/mnt/dev_ext_4tb/open/build/linux/mainline -j$(nproc)
 
 The kernel artifact will be at:
@@ -75,4 +89,5 @@ Script Locations
 - Setup script: `/mnt/dev_ext_4tb/open/vm/setup_qemu_for_local_kernel.sh`
 - Initramfs builder: `/mnt/dev_ext_4tb/infra/scripts/qemu_linux/make_initramfs.sh`
 - QEMU launcher: `/mnt/dev_ext_4tb/infra/scripts/qemu_linux/run_qemu_kernel.sh`
+- Config manager: `/mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh`
 - Documentation: `/mnt/dev_ext_4tb/open/vm/docs/linux/README.md`
