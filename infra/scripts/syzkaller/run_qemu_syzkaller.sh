@@ -10,6 +10,7 @@
 set -e
 
 DISK="/mnt/dev_ext_4tb"
+SHARED_DIR="$DISK/shared"
 KERNEL_BUILD="$DISK/open/build/linux/syzkaller"
 IMAGE_DIR="$DISK/open/vm/syzkaller"
 LOG_DIR="$DISK/open/logs/qemu"
@@ -52,11 +53,13 @@ mkdir -p "$LOG_DIR"
 
 echo "Booting Syzkaller kernel: $KERNEL"
 echo "Image: $IMAGE"
+echo "Shared: $SHARED_DIR (9p → /mnt/host in guest)"
 echo "SSH: ssh -i $SSH_KEY -p $SSH_PORT -o StrictHostKeyChecking=no root@localhost"
 echo "Log: $LOG_DIR/qemu_syzkaller_$(date +%s).log"
 echo
 
 # Per official docs: -drive, -net user hostfwd, -net nic e1000
+# -virtfs: always mount shared dir (guest auto-mounts at /mnt/host via systemd)
 qemu-system-x86_64 \
     -m "$MEM" \
     -smp "$CPUS" \
@@ -65,6 +68,7 @@ qemu-system-x86_64 \
     -drive "file=$IMAGE,format=raw" \
     -net "user,host=10.0.2.10,hostfwd=tcp:127.0.0.1:${SSH_PORT}-:22" \
     -net "nic,model=e1000" \
+    -virtfs "local,path=$SHARED_DIR,mount_tag=hostshare,security_model=mapped,id=hostshare" \
     -enable-kvm -cpu host \
     -nographic \
     -pidfile "$IMAGE_DIR/vm.pid" \

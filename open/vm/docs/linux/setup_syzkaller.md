@@ -44,6 +44,8 @@ Output: `open/build/linux/syzkaller/arch/x86/boot/bzImage`, `vmlinux`
 
 Options: `--kernel`, `--image`, `--ssh-port` (default 10021).
 
+**Shared directory:** The host dir `/mnt/dev_ext_4tb/shared/` is always exported via 9p and auto-mounted in the guest at `/mnt/host` (on first access). No manual `mount` is needed.
+
 SSH into the guest:
 
     ssh -i /mnt/dev_ext_4tb/open/vm/syzkaller/trixie.id_rsa -p 10021 -o StrictHostKeyChecking=no root@localhost
