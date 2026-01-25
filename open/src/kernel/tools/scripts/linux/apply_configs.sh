@@ -48,15 +48,24 @@ Usage: $0 [OPTIONS]
 Apply kernel configuration files to a build directory's .config.
 
 OPTIONS:
-    --build-dir PATH     Build directory to update (default: latest in $BUILD_BASE)
+    --build-dir PATH     Build directory to update
+                        (default: KBUILDDIR env var, or latest in $BUILD_BASE)
     --syzbot-config PATH Apply specific configs from a Syzbot-reported config file
     --help              Show this help message
+
+ENVIRONMENT:
+    KBUILDDIR           If set, used as default build directory
+                        (overridden by --build-dir argument)
 
 EXAMPLES:
     # Apply configs to latest build directory
     $0
 
-    # Apply configs to specific build directory
+    # Apply configs using KBUILDDIR environment variable
+    export KBUILDDIR=$BUILD_BASE/mpiric/2026_01_25_142350_010_v7_test
+    $0
+
+    # Apply configs to specific build directory (overrides KBUILDDIR)
     $0 --build-dir $BUILD_BASE/mpiric/2026_01_25_142350_010_v7_test
 
     # Apply configs and merge specific Syzbot config
@@ -235,17 +244,24 @@ main() {
     done
     
     # Determine build directory
+    # Priority: 1) --build-dir argument, 2) KBUILDDIR env var, 3) latest build dir
     if [ -z "$build_dir" ]; then
-        log "Finding latest build directory..."
-        build_dir=$(find_latest_build_dir)
-        log "Using latest build directory: $build_dir"
-    else
-        # Validate provided build directory
-        if [ ! -d "$build_dir" ]; then
-            log_error "Build directory does not exist: $build_dir"
-            exit 1
+        if [ -n "${KBUILDDIR:-}" ]; then
+            build_dir="$KBUILDDIR"
+            log "Using KBUILDDIR environment variable: $build_dir"
+        else
+            log "Finding latest build directory..."
+            build_dir=$(find_latest_build_dir)
+            log "Using latest build directory: $build_dir"
         fi
-        log "Using specified build directory: $build_dir"
+    else
+        log "Using --build-dir argument: $build_dir"
+    fi
+    
+    # Validate build directory
+    if [ ! -d "$build_dir" ]; then
+        log_error "Build directory does not exist: $build_dir"
+        exit 1
     fi
     
     # Check .config exists
