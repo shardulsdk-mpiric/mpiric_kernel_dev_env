@@ -143,11 +143,27 @@ if [ ! -f "$SRC_DIR/bin/syz-manager" ] && [ ! -f "$BUILD_DIR/bin/syz-manager" ];
     exit 1
 fi
 
-if [ ! -f "$SRC_DIR/bin/syz-fuzzer" ] && [ ! -f "$BUILD_DIR/bin/syz-fuzzer" ]; then
-    echo "ERROR: syz-fuzzer not found after build"
+if [ ! -f "$SRC_DIR/bin/linux_amd64/syz-execprog" ] && [ ! -f "$BUILD_DIR/bin/linux_amd64/syz-execprog" ]; then
+    echo "ERROR: syz-execprog not found after build"
     echo "Checking build output locations..."
-    find "$SRC_DIR" -name "syz-fuzzer" 2>/dev/null || echo "Not found in SRC_DIR"
-    find "$BUILD_DIR" -name "syz-fuzzer" 2>/dev/null || echo "Not found in BUILD_DIR"
+    find "$SRC_DIR" -name "syz-execprog" 2>/dev/null || echo "Not found in SRC_DIR"
+    find "$BUILD_DIR" -name "syz-execprog" 2>/dev/null || echo "Not found in BUILD_DIR"
+    exit 1
+fi
+
+if [ ! -f "$SRC_DIR/bin/linux_amd64/syz-executor" ] && [ ! -f "$BUILD_DIR/bin/linux_amd64/syz-executor" ]; then
+    echo "ERROR: syz-executor not found after build"
+    echo "Checking build output locations..."
+    find "$SRC_DIR" -name "syz-executor" 2>/dev/null || echo "Not found in SRC_DIR"
+    find "$BUILD_DIR" -name "syz-executor" 2>/dev/null || echo "Not found in BUILD_DIR"
+    exit 1
+fi
+
+if [ ! -f "$SRC_DIR/bin/syz-repro" ] && [ ! -f "$BUILD_DIR/bin/syz-repro" ]; then
+    echo "ERROR: syz-repro not found after build"
+    echo "Checking build output locations..."
+    find "$SRC_DIR" -name "syz-repro" 2>/dev/null || echo "Not found in SRC_DIR"
+    find "$BUILD_DIR" -name "syz-repro" 2>/dev/null || echo "Not found in BUILD_DIR"
     exit 1
 fi
 
