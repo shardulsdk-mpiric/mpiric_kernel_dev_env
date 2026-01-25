@@ -21,16 +21,18 @@ This VM setup depends on the following fixed layout on the external dev disk:
 /mnt/dev_ext_4tb/
 ├── open/
 │ ├── src/
-│ │ └── kernel/linux # Official Linux kernel source (git)
+│ │ ├── kernel/linux   # Official Linux kernel source (git)
+│ │ └── syzkaller/     # Syzkaller source (cloned by setup)
 │ ├── build/
-│ │ └── linux/<profile>/ # Out-of-tree kernel builds (bzImage, modules)
+│ │ ├── linux/<profile>/  # Out-of-tree kernel builds (bzImage, modules)
+│ │ └── syzkaller/        # Syzkaller binaries
 │ ├── vm/
-│ │ └── linux/ # This directory (QEMU runtime assets)
-│ └── logs/
-│ └── qemu/ # QEMU boot logs
-└── infra/
-└── scripts/
-└── qemu_linux/ # Host-side scripts (run_qemu_kernel.sh, helpers)
+│ │ ├── linux/         # QEMU assets (initramfs for generic boot)
+│ │ └── syzkaller/     # Debian Trixie image (trixie.img, trixie.id_rsa)
+│ └── logs/qemu/
+└── infra/scripts/
+    ├── qemu_linux/    # Generic kernel boot (run_qemu_kernel.sh, make_initramfs.sh)
+    └── syzkaller/     # Syzkaller setup and run (see setup_syzkaller.md)
 
 
 **Important rule**
@@ -91,11 +93,11 @@ Guest boot automation (v1) is intentionally minimal:
 - init scripts or systemd service inside the guest
 - no external orchestration tools
 
-Future extensions may include:
-- snapshot mode
-- cloud-init–style hooks
-- shared folders (9p / virtiofs)
-- syzkaller-specific profiles
+Syzkaller uses a **Debian Trixie disk image** (not initramfs). See [setup_syzkaller.md](setup_syzkaller.md).
+
+Other future extensions:
+- snapshot mode, cloud-init–style hooks
+- shared folders (9p / virtiofs) for ad-hoc use
 
 ---
 
@@ -138,12 +140,16 @@ Every layer added later should earn its place.
 
 - [x] Disk + permissions setup
 - [x] Kernel source + build layout
-- [x] Minimal rootfs (BusyBox initramfs)
+- [x] Minimal rootfs (BusyBox initramfs) for generic kernel boot
 - [x] QEMU boot script
 - [x] Boot-time automation hooks
 - [x] SSH access to guest VMs
+- [x] Syzkaller integration (Debian Trixie image, create-image.sh)
 - [x] Comprehensive development roadmap (TODO.md)
 
-(Progress tracked via git commits and TODO.md. Scripts provide the implementation.)
+## Documentation
+
+- [setup_qemu_for_local_kernel.md](setup_qemu_for_local_kernel.md) — Generic QEMU + initramfs setup
+- [setup_syzkaller.md](setup_syzkaller.md) — Syzkaller + Debian Trixie image setup
 
 

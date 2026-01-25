@@ -1,8 +1,11 @@
 #!/bin/bash
 
-# Enhanced Initramfs Builder for Syzkaller
-# Creates initramfs with automatic shared directory mounting and Syzkaller setup
+# Enhanced Initramfs Builder for Syzkaller (legacy / ad-hoc use)
 #
+# DEPRECATED for main Syzkaller flow: use create_syzkaller_image.sh and the
+# Debian Trixie disk image instead. See open/vm/docs/linux/setup_syzkaller.md.
+#
+# This script creates initramfs + 9p shared-dir mounting for manual repro etc.
 # Usage: ./make_initramfs_syzkaller.sh [--shared-dir path]
 
 set -e

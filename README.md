@@ -94,29 +94,30 @@ make O=/mnt/dev_ext_4tb/open/build/linux/mainline -j$(nproc)
 
 ### Bug Reproduction with Syzkaller
 
-**Prerequisites:** Docker must be installed and running.
+**Prerequisites:** Docker installed and running. See [setup_syzkaller.md](open/vm/docs/linux/setup_syzkaller.md).
 
 ```bash
-# 1. Setup Syzkaller environment (requires Docker)
+# 1. Setup Syzkaller + Debian Trixie image (requires Docker)
 sudo systemctl start docker  # if not running
 /mnt/dev_ext_4tb/infra/scripts/syzkaller/setup_syzkaller.sh
 
 # 2. Build Syzkaller-compatible kernel
 /mnt/dev_ext_4tb/infra/scripts/syzkaller/build_syzkaller_kernel.sh
 
-# 3. Boot with Syzkaller support
+# 3. Boot QEMU with Debian image
 /mnt/dev_ext_4tb/infra/scripts/syzkaller/run_qemu_syzkaller.sh
 
-# 4. Start fuzzing
+# 4. Run syzkaller manager (separate terminal)
 /mnt/dev_ext_4tb/infra/scripts/syzkaller/run_syzkaller.sh
 
-# In guest VM, Syzkaller binaries are auto-mounted at /mnt/host/syzkaller/bin/
+# SSH to guest: ssh -i open/vm/syzkaller/trixie.id_rsa -p 10021 root@localhost
 ```
 
 ## 📚 Documentation
 
 - **[QEMU Environment Guide](open/vm/docs/linux/README.md)**: Detailed QEMU setup and usage
-- **[Setup Instructions](open/vm/docs/linux/setup_qemu_for_local_kernel.md)**: Step-by-step setup guide
+- **[QEMU + Initramfs Setup](open/vm/docs/linux/setup_qemu_for_local_kernel.md)**: Generic kernel boot
+- **[Syzkaller Setup](open/vm/docs/linux/setup_syzkaller.md)**: Syzkaller + Debian Trixie image
 - **[Development Roadmap](TODO.md)**: Planned features and improvements
 
 ## 🛠️ Key Components
@@ -132,10 +133,10 @@ sudo systemctl start docker  # if not running
 - **Multiple profiles**: Support for different kernel configurations
 - **Reproducible**: Consistent build environments
 
-### Syzkaller Integration (Planned)
-- **Automated fuzzing**: Bug reproduction and validation
-- **Test case management**: Organized test corpus
-- **Result analysis**: Automated crash analysis and reporting
+### Syzkaller Integration
+- **Debian Trixie image**: Syzkaller `create-image.sh`; disk image + SSH key
+- **Automated fuzzing**: syz-manager, syz-fuzzer, syz-executor
+- **Manual repro**: syz-execprog in guest (see [setup_syzkaller.md](open/vm/docs/linux/setup_syzkaller.md))
 
 ## 🤝 Development Philosophy
 

@@ -19,396 +19,81 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 # Syzkaller Setup Script
-# Downloads, builds, and configures Syzkaller for Linux kernel fuzzing
-#
-# This script:
-# 1. Downloads Syzkaller source code
-# 2. Installs required dependencies (Go, build tools)
-# 3. Builds Syzkaller binaries
-# 4. Creates QEMU integration scripts
-# 5. Sets up shared directory for guest access
+# Downloads, builds Syzkaller and creates Debian Trixie image.
+# Automation scripts are committed separately; this script does not generate them.
 
 set -e
 
-# Configuration
-SYZKALLER_VERSION="master"  # or specific tag like "v4.0"
-BASE_DIR="/mnt/dev_ext_4tb"
+SYZKALLER_VERSION="${SYZKALLER_VERSION:-master}"
+BASE_DIR="${BASE_DIR:-/mnt/dev_ext_4tb}"
 SRC_DIR="$BASE_DIR/open/src/syzkaller"
 BUILD_DIR="$BASE_DIR/open/build/syzkaller"
 SHARED_DIR="$BASE_DIR/shared/syzkaller"
+IMAGE_DIR="$BASE_DIR/open/vm/syzkaller"
 SCRIPTS_DIR="$BASE_DIR/infra/scripts/syzkaller"
 
 echo "=== Syzkaller Setup ==="
 echo "Source: $SRC_DIR"
 echo "Build: $BUILD_DIR"
+echo "Image:  $IMAGE_DIR"
 echo "Shared: $SHARED_DIR"
 echo
 
-# Create directories
 echo "1. Creating directories..."
-mkdir -p "$SRC_DIR"
-mkdir -p "$BUILD_DIR/bin"
-mkdir -p "$SHARED_DIR"
-mkdir -p "$SCRIPTS_DIR"
+mkdir -p "$SRC_DIR" "$BUILD_DIR/bin" "$SHARED_DIR/workdir" "$SHARED_DIR/corpus" "$SHARED_DIR/crashes" "$IMAGE_DIR"
 
-# Install dependencies
 echo "2. Installing dependencies..."
-
-# Check if Go is installed
 if ! command -v go &> /dev/null; then
     echo "Installing Go..."
-    sudo apt update
-    sudo apt install -y golang-go
+    sudo apt update && sudo apt install -y golang-go
 fi
+sudo apt install -y build-essential debootstrap qemu-system-x86 qemu-utils \
+    flex bison libc6-dev libc6-dev-i386 linux-libc-dev linux-libc-dev:i386 \
+    libgmp3-dev libmpfr-dev libmpc-dev bc git
 
-# Additional build dependencies for Syzkaller
-sudo apt install -y \
-    build-essential \
-    debootstrap \
-    qemu-system-x86 \
-    qemu-utils \
-    flex \
-    bison \
-    libc6-dev \
-    libc6-dev-i386 \
-    linux-libc-dev \
-    linux-libc-dev:i386 \
-    libgmp3-dev \
-    libmpfr-dev \
-    libmpc-dev \
-    bc \
-    git
-
-# Download Syzkaller source
 echo "3. Downloading Syzkaller source..."
 if [ -d "$SRC_DIR/.git" ]; then
-    echo "Syzkaller source already exists, updating..."
     cd "$SRC_DIR"
-    # Handle detached HEAD state by checking out master/main branch first
     CURRENT_BRANCH=$(git branch --show-current)
     if [ -z "$CURRENT_BRANCH" ]; then
-        # We're in detached HEAD, checkout master or main
-        if git show-ref --verify --quiet refs/heads/master; then
-            git checkout master
-        elif git show-ref --verify --quiet refs/heads/main; then
-            git checkout main
-        else
-            echo "ERROR: No master or main branch found in Syzkaller repo"
-            exit 1
-        fi
+        if git show-ref --verify -q refs/heads/master; then git checkout master
+        elif git show-ref --verify -q refs/heads/main; then git checkout main
+        else echo "ERROR: No master/main branch"; exit 1; fi
     fi
     git pull
 else
-    echo "Cloning Syzkaller repository..."
     git clone https://github.com/google/syzkaller.git "$SRC_DIR"
     cd "$SRC_DIR"
-    if [ "$SYZKALLER_VERSION" != "master" ]; then
-        git checkout "$SYZKALLER_VERSION"
-    fi
+    [ "$SYZKALLER_VERSION" != "master" ] && git checkout "$SYZKALLER_VERSION"
 fi
 
-# Build Syzkaller
-echo "4. Building Syzkaller..."
-cd "$SRC_DIR"
-
-# Use syz-env for proper build environment (provides correct Go version and dependencies)
-echo "Using syz-env for building Syzkaller..."
+echo "4. Building Syzkaller (syz-env)..."
 if ! command -v docker &> /dev/null; then
-    echo "ERROR: Docker is required for building Syzkaller with syz-env"
-    echo "Please install Docker: https://docs.docker.com/engine/install/"
+    echo "ERROR: Docker required. Install: https://docs.docker.com/engine/install/"
     exit 1
 fi
-
-# Check if Docker daemon is running
 if ! docker info &> /dev/null; then
-    echo "ERROR: Docker daemon is not running"
-    echo "Please start Docker service or run: sudo systemctl start docker"
+    echo "ERROR: Docker daemon not running. Start: sudo systemctl start docker"
     exit 1
 fi
-
-# Use syz-env to build
+cd "$SRC_DIR"
 ./tools/syz-env make -j"$(nproc)"
 
-# Install binaries to build directory
 echo "5. Installing binaries..."
-cp -r bin/* "$BUILD_DIR/bin/"
-
-# Verify build
-echo "6. Verifying build..."
-if [ ! -f "$SRC_DIR/bin/syz-manager" ] && [ ! -f "$BUILD_DIR/bin/syz-manager" ]; then
-    echo "ERROR: syz-manager not found after build"
-    echo "Checking build output locations..."
-    find "$SRC_DIR" -name "syz-manager" 2>/dev/null || echo "Not found in SRC_DIR"
-    find "$BUILD_DIR" -name "syz-manager" 2>/dev/null || echo "Not found in BUILD_DIR"
-    exit 1
+rm -rf "$BUILD_DIR/bin"
+cp -r "$SRC_DIR/bin" "$BUILD_DIR/"
+if [ ! -f "$BUILD_DIR/bin/syz-manager" ]; then
+    echo "ERROR: syz-manager not found after build"; exit 1
 fi
 
-if [ ! -f "$SRC_DIR/bin/linux_amd64/syz-execprog" ] && [ ! -f "$BUILD_DIR/bin/linux_amd64/syz-execprog" ]; then
-    echo "ERROR: syz-execprog not found after build"
-    echo "Checking build output locations..."
-    find "$SRC_DIR" -name "syz-execprog" 2>/dev/null || echo "Not found in SRC_DIR"
-    find "$BUILD_DIR" -name "syz-execprog" 2>/dev/null || echo "Not found in BUILD_DIR"
-    exit 1
-fi
-
-if [ ! -f "$SRC_DIR/bin/linux_amd64/syz-executor" ] && [ ! -f "$BUILD_DIR/bin/linux_amd64/syz-executor" ]; then
-    echo "ERROR: syz-executor not found after build"
-    echo "Checking build output locations..."
-    find "$SRC_DIR" -name "syz-executor" 2>/dev/null || echo "Not found in SRC_DIR"
-    find "$BUILD_DIR" -name "syz-executor" 2>/dev/null || echo "Not found in BUILD_DIR"
-    exit 1
-fi
-
-if [ ! -f "$SRC_DIR/bin/syz-repro" ] && [ ! -f "$BUILD_DIR/bin/syz-repro" ]; then
-    echo "ERROR: syz-repro not found after build"
-    echo "Checking build output locations..."
-    find "$SRC_DIR" -name "syz-repro" 2>/dev/null || echo "Not found in SRC_DIR"
-    find "$BUILD_DIR" -name "syz-repro" 2>/dev/null || echo "Not found in BUILD_DIR"
-    exit 1
-fi
-
-# Copy binaries to build directory if they're in src directory
-if [ -f "$SRC_DIR/bin/syz-manager" ]; then
-    echo "Copying binaries from source to build directory..."
-    cp -r "$SRC_DIR/bin/"* "$BUILD_DIR/bin/" 2>/dev/null || true
-fi
-
-# Create shared directory structure
-echo "7. Setting up shared directory..."
-mkdir -p "$SHARED_DIR/bin"
-mkdir -p "$SHARED_DIR/workdir"
-mkdir -p "$SHARED_DIR/corpus"
-mkdir -p "$SHARED_DIR/crashes"
-
-# Copy binaries to shared directory for guest access
-cp -r "$BUILD_DIR/bin/"* "$SHARED_DIR/bin/"
-
-# Build Syzkaller-enhanced initramfs
-echo "8. Building Syzkaller-enhanced initramfs..."
-"$SCRIPTS_DIR/../qemu_linux/make_initramfs_syzkaller.sh" --shared-dir "$BASE_DIR/shared"
-
-# Create QEMU integration script
-echo "9. Creating QEMU integration script..."
-cat > "$SCRIPTS_DIR/run_qemu_syzkaller.sh" << 'EOF'
-#!/bin/bash
-
-# QEMU Syzkaller Integration Script
-# Boots kernel with Syzkaller binaries available in guest VM
-#
-# Usage: ./run_qemu_syzkaller.sh [--kernel path] [--config path]
-
-set -e
-
-# Defaults
-DISK="/mnt/dev_ext_4tb"
-BUILD_DIR="$DISK/open/build/linux/syzkaller"
-VM_DIR="$DISK/open/vm/linux"
-SHARED_DIR="$DISK/shared"
-LOG_DIR="$DISK/open/logs/qemu"
-KERNEL="$BUILD_DIR/arch/x86/boot/bzImage"
-INITRD="$VM_DIR/initramfs.cpio.gz"
-MEM="4G"  # More memory for fuzzing
-CPUS="4"  # More CPUs for fuzzing
-SSH_PORT="2223"  # Different port for syzkaller VM
-SNAPSHOT=""
-
-# Argument parsing
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --kernel) KERNEL="$2"; shift ;;
-        --rootfs) INITRD="$2"; shift ;;
-        --ssh-forward) SSH_PORT="$2"; shift ;;
-        --snapshot) SNAPSHOT="-snapshot" ;;
-        *) echo "Unknown parameter: $1"; exit 1 ;;
-    esac
-    shift
-done
-
-# Ensure kernel exists
-if [ ! -f "$KERNEL" ]; then
-    echo "Error: Kernel not found at $KERNEL"
-    echo "Make sure to build a syzkaller-compatible kernel first."
-    exit 1
-fi
-
-# QEMU Command with 9p shared directory
-QEMU_CMD="qemu-system-x86_64 \
-    -m $MEM \
-    -smp $CPUS \
-    -kernel $KERNEL \
-    -initrd $INITRD \
-    -nographic \
-    -append \"console=ttyS0 root=/dev/ram0 rw\" \
-    -enable-kvm -cpu host \
-    -netdev user,id=net0,hostfwd=tcp::$SSH_PORT-:22 -device virtio-net-pci,netdev=net0 \
-    -virtfs local,path=$SHARED_DIR,mount_tag=hostshare,security_model=mapped,id=hostshare \
-    -serial mon:stdio \
-    $SNAPSHOT"
-
-echo "Booting Syzkaller Kernel: $KERNEL"
-echo "Shared directory: $SHARED_DIR"
-echo "SSH port: $SSH_PORT"
-echo "Logging to: $LOG_DIR/qemu_syzkaller_$(date +%F_%T).log"
-echo
-echo "In guest VM, mount shared directory:"
-echo "  mkdir -p /mnt/host"
-echo "  mount -t 9p -o trans=virtio hostshare /mnt/host"
-echo
-echo "Syzkaller binaries will be available at: /mnt/host/syzkaller/bin/"
-echo
-
-# Run and log
-eval "$QEMU_CMD" | tee "$LOG_DIR/qemu_syzkaller_$(date +%s).log"
-EOF
-
-chmod +x "$SCRIPTS_DIR/run_qemu_syzkaller.sh"
-
-# Create Syzkaller manager configuration
-echo "10. Creating Syzkaller manager configuration..."
-cat > "$SCRIPTS_DIR/syzkaller_manager.cfg" << EOF
-{
-    "target": "linux/amd64",
-    "http": "127.0.0.1:56741",
-    "workdir": "$SHARED_DIR/workdir",
-    "kernel_obj": "$BUILD_DIR/vmlinux",
-    "syzkaller": "$BUILD_DIR/bin",
-    "corpus": "$SHARED_DIR/corpus",
-    "result": "$SHARED_DIR/crashes",
-    "type": "qemu",
-    "qemu": "$BUILD_DIR/arch/x86/boot/bzImage",
-    "qemu_args": "-m 4G -smp 4 -enable-kvm -cpu host",
-    "enable_syscalls": [
-        "openat\$dfd",
-        "read",
-        "write",
-        "close"
-    ],
-    "disable_syscalls": [],
-    "sandbox": "namespace",
-    "procs": 4,
-    "leak": false,
-    "cover": true
-}
-EOF
-
-# Create Syzkaller runner script
-echo "11. Creating Syzkaller runner script..."
-cat > "$SCRIPTS_DIR/run_syzkaller.sh" << EOF
-#!/bin/bash
-
-# Syzkaller Runner Script
-# Starts syzkaller manager with QEMU integration
-#
-# Prerequisites:
-# - Syzkaller-compatible kernel built and available
-# - QEMU VM running with shared directory mounted
-# - SSH access configured
-
-set -e
-
-BASE_DIR="/mnt/dev_ext_4tb"
-BUILD_DIR="\$BASE_DIR/open/build/syzkaller"
-SHARED_DIR="\$BASE_DIR/shared/syzkaller"
-SCRIPTS_DIR="\$BASE_DIR/infra/scripts/syzkaller"
-
-echo "=== Starting Syzkaller Fuzzing ==="
-echo "Build dir: \$BUILD_DIR"
-echo "Shared dir: \$SHARED_DIR"
-echo
-
-# Check prerequisites
-if [ ! -f "\$BUILD_DIR/bin/syz-manager" ]; then
-    echo "ERROR: syz-manager not found. Run setup_syzkaller.sh first."
-    exit 1
-fi
-
-if [ ! -f "\$BUILD_DIR/arch/x86/boot/bzImage" ]; then
-    echo "ERROR: Syzkaller kernel not found at \$BUILD_DIR/arch/x86/boot/bzImage"
-    echo "Build a syzkaller-compatible kernel first."
-    exit 1
-fi
-
-# Start syzkaller manager
-echo "Starting syzkaller manager..."
-cd "\$SHARED_DIR"
-"\$BUILD_DIR/bin/syz-manager" -config "\$SCRIPTS_DIR/syzkaller_manager.cfg"
-
-echo "Syzkaller manager stopped."
-EOF
-
-chmod +x "$SCRIPTS_DIR/run_syzkaller.sh"
-
-# Create kernel build script for Syzkaller compatibility
-echo "12. Creating Syzkaller kernel build script..."
-cat > "$SCRIPTS_DIR/build_syzkaller_kernel.sh" << EOF
-#!/bin/bash
-
-# Build Linux Kernel for Syzkaller Compatibility
-# Enables required config options for fuzzing
-
-set -e
-
-BASE_DIR="/mnt/dev_ext_4tb"
-SRC_DIR="\$BASE_DIR/open/src/kernel/linux"
-BUILD_DIR="\$BASE_DIR/open/build/linux/syzkaller"
-
-echo "=== Building Syzkaller-Compatible Kernel ==="
-echo "Source: \$SRC_DIR"
-echo "Build: \$BUILD_DIR"
-echo
-
-# Create build directory
-mkdir -p "\$BUILD_DIR"
-
-# Configure kernel with Syzkaller requirements
-echo "Configuring kernel..."
-make -C "\$SRC_DIR" O="\$BUILD_DIR" defconfig
-
-# Enable Syzkaller-required options
-cat >> "\$BUILD_DIR/.config" << EOL
-# Syzkaller requirements
-CONFIG_KCOV=y
-CONFIG_DEBUG_INFO=y
-CONFIG_KASAN=y
-CONFIG_KASAN_INLINE=y
-CONFIG_CONFIGFS_FS=y
-CONFIG_SECURITYFS=y
-CONFIG_CMDLINE_BOOL=y
-CONFIG_CMDLINE="console=ttyS0 root=/dev/ram0 rw"
-EOL
-
-# Reconfigure with new options
-make -C "\$SRC_DIR" O="\$BUILD_DIR" olddefconfig
-
-# Build kernel
-echo "Building kernel..."
-make -C "\$SRC_DIR" O="\$BUILD_DIR" -j\$(nproc)
-
-echo "Syzkaller kernel built successfully!"
-echo "Kernel: \$BUILD_DIR/arch/x86/boot/bzImage"
-echo "vmlinux: \$BUILD_DIR/vmlinux"
-echo
-echo "To test: \$BASE_DIR/infra/scripts/syzkaller/run_qemu_syzkaller.sh --kernel \$BUILD_DIR/arch/x86/boot/bzImage"
-EOF
-
-chmod +x "$SCRIPTS_DIR/build_syzkaller_kernel.sh"
+echo "6. Creating Debian Trixie image..."
+BASE_DIR="$BASE_DIR" "$SCRIPTS_DIR/create_syzkaller_image.sh"
 
 echo
-echo "=== Syzkaller Setup Complete! ==="
-echo
+echo "=== Syzkaller Setup Complete ==="
 echo "Next steps:"
-echo "1. Build a Syzkaller-compatible kernel:"
-echo "   $SCRIPTS_DIR/build_syzkaller_kernel.sh"
-echo
-echo "2. Boot kernel with Syzkaller support:"
-echo "   $SCRIPTS_DIR/run_qemu_syzkaller.sh"
-echo
-echo "3. In guest VM, mount shared directory:"
-echo "   mkdir -p /mnt/host"
-echo "   mount -t 9p -o trans=virtio hostshare /mnt/host"
-echo
-echo "4. Run Syzkaller:"
-echo "   $SCRIPTS_DIR/run_syzkaller.sh"
-echo
-echo "Binaries are available at: $SHARED_DIR/bin/"
-echo "Configuration: $SCRIPTS_DIR/syzkaller_manager.cfg"
+echo "  1. Build kernel:  $SCRIPTS_DIR/build_syzkaller_kernel.sh"
+echo "  2. Boot QEMU:     $SCRIPTS_DIR/run_qemu_syzkaller.sh"
+echo "  3. Run fuzzer:    $SCRIPTS_DIR/run_syzkaller.sh"
+echo "  4. SSH to guest:  ssh -i $IMAGE_DIR/trixie.id_rsa -p 10021 -o StrictHostKeyChecking=no root@localhost"
+echo "See: $BASE_DIR/open/vm/docs/linux/setup_syzkaller.md"
