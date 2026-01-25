@@ -69,6 +69,52 @@ Example (inside guest, after copying binaries and `repro.txt`):
 
 **Note:** `parsed 0 programs` means the file is empty, not in Syzkaller format, or the wrong type. Use `.txt` with proper program format or a corpus database.
 
+## Troubleshooting
+
+### "shmem mmap failed" or "mkswap: error: swap area needs to be at least 40 KiB"
+
+**Symptom:** `syz-execprog` fails with:
+```
+SYZFAIL: shmem mmap failed
+size=4194304 (errno 22: Invalid argument)
+mkswap: error: swap area needs to be at least 40 KiB
+```
+
+**Cause:** The minimal Debian image doesn't have swap configured. `syz-executor` requires swap support for syscalls like `swapon`, `mkswap`, and shared memory operations.
+
+**Solution:** The image created by `create_syzkaller_image.sh` automatically includes a 64MB swap file (`/swapfile`) that is formatted and enabled at boot via a systemd service. If you're using an older image created before this fix:
+
+```bash
+# Inside the guest VM:
+fallocate -l 64M /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+```
+
+Or recreate the image: `create_syzkaller_image.sh` (swap is now included automatically).
+
+### "sudo: unable to resolve host syzkaller"
+
+**Symptom:** `sudo` shows a warning about hostname resolution.
+
+**Solution:** Add hostname to `/etc/hosts`:
+```bash
+echo "127.0.0.1 syzkaller" >> /etc/hosts
+```
+
+This is cosmetic and doesn't affect functionality.
+
+### Executing binaries from `/mnt/host` (9p mount)
+
+If you encounter `ETXTBSY` or other filesystem errors when running binaries directly from the 9p-mounted `/mnt/host`, copy them to local disk first:
+
+```bash
+cp /mnt/host/syzkaller/bin/linux_amd64/* /tmp/
+cd /tmp
+./syz-execprog -executor=./syz-executor ...
+```
+
 ## Script Locations
 
 | Script | Purpose |
