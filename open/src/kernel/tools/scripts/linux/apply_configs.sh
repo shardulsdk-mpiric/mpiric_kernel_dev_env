@@ -115,8 +115,8 @@ apply_config_option() {
             "$KERNEL_SRC/scripts/config" --file "$config_file" --disable "$config" || true
             ;;
         *)
-            if [[ "$value" =~ ^[0-9]+$ ]]; then
-                # Numeric value
+            if [[ "$value" =~ ^[0-9]+$ ]] || [[ "$value" =~ ^0[xX][0-9a-fA-F]+$ ]]; then
+                # Numeric value (decimal or hexadecimal)
                 "$KERNEL_SRC/scripts/config" --file "$config_file" --set-val "$config" "$value" || true
             elif [[ "$value" =~ ^\".*\"$ ]]; then
                 # String value (remove quotes)
