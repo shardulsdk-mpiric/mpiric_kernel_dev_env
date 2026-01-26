@@ -65,3 +65,19 @@ export SCRIPTS_SYZKALLER_DIR="$INFRA_DIR/scripts/syzkaller"
 # Shared Syzkaller directories
 export SHARED_SYZKALLER_DIR="$SHARED_DIR/syzkaller"
 
+# Kernel build environment variables (commonly used in kernel development)
+# KSRCDIR: Kernel source directory
+export KSRCDIR="$KERNEL_SRC_DIR"
+
+# KBUILDDIR: Kernel build directory with timestamped prefix
+# Users can override this by setting KBUILDDIR before sourcing config.sh
+# Format: YYYY_MM_DD_HHMMSS_<profile>
+if [ -z "$KBUILDDIR" ]; then
+    TIMESTAMP=$(date +"%Y_%m_%d_%H%M%S")
+    BUILD_PROFILE="${BUILD_PROFILE:-mainline}"
+    export KBUILDDIR="$KERNEL_BUILD_DIR/${TIMESTAMP}_${BUILD_PROFILE}"
+else
+    # KBUILDDIR already set by user, export it
+    export KBUILDDIR
+fi
+

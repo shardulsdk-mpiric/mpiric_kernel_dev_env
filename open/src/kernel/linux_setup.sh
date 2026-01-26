@@ -105,15 +105,17 @@ echo
 
 # 6) Create a clean build workflow (out-of-tree build)
 echo "6. Setting up build directory..."
-BUILD_PROFILE="${BUILD_PROFILE:-mainline}"
-BUILD_DIR="$KERNEL_BUILD_DIR/$BUILD_PROFILE"
-mkdir -p "$BUILD_DIR"
-
-export KSRCDIR="$KERNEL_SRC_DIR"
-export KBUILDDIR="$BUILD_DIR"
+# KSRCDIR and KBUILDDIR are set by config.sh
+# KBUILDDIR includes timestamp prefix by default (format: YYYY_MM_DD_HHMMSS_<profile>)
+# Users can override KBUILDDIR before sourcing config.sh or set it manually
+mkdir -p "$KBUILDDIR"
 
 echo "  Source: $KSRCDIR"
 echo "  Build:  $KBUILDDIR"
+echo
+echo "Note: KBUILDDIR includes timestamp prefix. To use a custom build directory:"
+echo "  export KBUILDDIR=\"$KERNEL_BUILD_DIR/your_custom_name\""
+echo "  source $WORKSPACE_ROOT/infra/scripts/config.sh"
 echo
 echo "To build the kernel:"
 echo "  make -C \"\$KSRCDIR\" O=\"\$KBUILDDIR\" defconfig"
