@@ -34,6 +34,13 @@ echo "Output: $IMAGE_DIR/trixie.img"
 echo "SSH key: $IMAGE_DIR/trixie.id_rsa"
 echo
 
+# Update Debian keyrings before creating image (fixes "unknown key" errors)
+echo "Updating Debian keyrings..."
+sudo apt-get update -qq
+sudo apt-get install -y debian-archive-keyring debian-ports-archive-keyring > /dev/null 2>&1 || {
+    echo "Warning: Could not update keyrings, continuing anyway..."
+}
+
 # Use Syzkaller's create-image.sh (minimal feature set by default)
 "$SRC_DIR/tools/create-image.sh"
 
