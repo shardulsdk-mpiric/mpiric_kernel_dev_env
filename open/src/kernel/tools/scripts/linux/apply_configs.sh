@@ -26,11 +26,23 @@
 
 set -euo pipefail
 
-# Configuration
-BASE_DIR="${BASE_DIR:-/mnt/dev_ext_4tb}"
-KERNEL_SRC="$BASE_DIR/open/src/kernel/linux"
-BUILD_BASE="$BASE_DIR/open/build/kernel/linux"
-CONFIGS_DIR="$BASE_DIR/open/src/kernel/tools/configs/to_load"
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Go up to workspace root: open/src/kernel/tools/scripts/linux/ -> scripts/ -> tools/ -> kernel/ -> src/ -> open/ -> workspace root
+# That's 6 levels up
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../../../../../../" && pwd)"
+# Validate workspace root
+if [ ! -d "$WORKSPACE_ROOT/infra" ] || [ ! -d "$WORKSPACE_ROOT/open" ]; then
+    echo "Error: Could not detect workspace root from script location." >&2
+    echo "Set KERNEL_DEV_ENV_ROOT environment variable or run from workspace root." >&2
+    exit 1
+fi
+source "$WORKSPACE_ROOT/infra/scripts/config.sh"
+
+# Configuration (using config system)
+KERNEL_SRC="$KERNEL_SRC_DIR"
+BUILD_BASE="$KERNEL_BUILD_DIR"
+CONFIGS_DIR="$OPEN_DIR/src/kernel/tools/configs/to_load"
 
 # Helper logging function
 log() {
@@ -56,17 +68,18 @@ OPTIONS:
 ENVIRONMENT:
     KBUILDDIR           If set, used as default build directory
                         (overridden by --build-dir argument)
+                        (auto-set by config.sh with timestamped prefix)
 
 EXAMPLES:
     # Apply configs to latest build directory
     $0
 
-    # Apply configs using KBUILDDIR environment variable
-    export KBUILDDIR=$BUILD_BASE/mpiric/2026_01_25_142350_010_v7_test
+    # Apply configs using KBUILDDIR environment variable (from config.sh)
+    source infra/scripts/config.sh
     $0
 
     # Apply configs to specific build directory (overrides KBUILDDIR)
-    $0 --build-dir $BUILD_BASE/mpiric/2026_01_25_142350_010_v7_test
+    $0 --build-dir $BUILD_BASE/2026_01_25_142350_mainline
 
     # Apply configs and merge specific Syzbot config
     $0 --syzbot-config /path/to/syzbot.config

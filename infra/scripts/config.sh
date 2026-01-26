@@ -38,6 +38,9 @@ fi
 # Export the root directory
 export KERNEL_DEV_ENV_ROOT
 
+# BASE_DIR alias for backward compatibility (used by some scripts)
+export BASE_DIR="$KERNEL_DEV_ENV_ROOT"
+
 # Standard directory paths (relative to workspace root)
 export OPEN_DIR="$KERNEL_DEV_ENV_ROOT/open"
 export INFRA_DIR="$KERNEL_DEV_ENV_ROOT/infra"
@@ -122,6 +125,9 @@ printvars() {
     echo
     echo "Build Profile:"
     echo "  BUILD_PROFILE=${BUILD_PROFILE:-mainline}"
+    echo
+    echo "Backward Compatibility:"
+    echo "  BASE_DIR=$BASE_DIR"
     echo
     echo "=== End of Variables ==="
 }
