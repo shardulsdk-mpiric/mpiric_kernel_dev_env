@@ -42,6 +42,46 @@ if ! sudo apt-get update -qq && sudo apt-get install -y debian-archive-keyring d
     sudo apt-get install -y debian-archive-keyring debian-ports-archive-keyring
 fi
 
+# Download and import latest Debian release keys (especially needed for testing/unstable like Trixie)
+echo "Downloading latest Debian release keys..."
+TEMP_KEYRING=$(mktemp)
+trap "rm -f $TEMP_KEYRING" EXIT
+
+# Download the Debian Archive Automatic Signing Key (key id: 762F67A0B2C39DE4)
+# Try multiple key sources
+KEY_DOWNLOADED=false
+for key_url in \
+    "https://ftp-master.debian.org/keys/archive-key-2023.asc" \
+    "https://ftp-master.debian.org/keys/release-11.asc" \
+    "https://ftp-master.debian.org/keys/release-12.asc"; do
+    if wget -q -O "$TEMP_KEYRING" "$key_url" 2>/dev/null; then
+        KEY_DOWNLOADED=true
+        break
+    fi
+done
+
+if [ "$KEY_DOWNLOADED" = true ]; then
+    # Import the key into the system keyring
+    if sudo gpg --no-default-keyring --keyring /usr/share/keyrings/debian-archive-keyring.gpg --import "$TEMP_KEYRING" 2>/dev/null; then
+        echo "Successfully imported Debian archive key"
+    else
+        # Try alternative method: add to trusted keys
+        KEY_ID=$(gpg --no-default-keyring --keyring "$TEMP_KEYRING" --list-keys --with-colons 2>/dev/null | grep "^fpr" | head -1 | cut -d: -f10)
+        if [ -n "$KEY_ID" ]; then
+            echo "$TEMP_KEYRING" | sudo gpg --dearmor -o /usr/share/keyrings/debian-archive-keyring.gpg 2>/dev/null || {
+                echo "Warning: Could not import Debian key using alternative method"
+            }
+        fi
+    fi
+    rm -f "$TEMP_KEYRING"
+    trap - EXIT
+else
+    echo "Warning: Could not download Debian archive key from any source"
+    echo "You may need to manually update the keyring or use a different Debian release"
+    rm -f "$TEMP_KEYRING"
+    trap - EXIT
+fi
+
 # Use Syzkaller's create-image.sh (minimal feature set by default)
 "$SRC_DIR/tools/create-image.sh"
 
