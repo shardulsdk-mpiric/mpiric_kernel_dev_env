@@ -81,3 +81,48 @@ else
     export KBUILDDIR
 fi
 
+# Function to print all environment variables set by this config
+# Usage: source infra/scripts/config.sh && printvars
+printvars() {
+    echo "=== Kernel Development Environment Variables ==="
+    echo
+    echo "Workspace Configuration:"
+    echo "  KERNEL_DEV_ENV_ROOT=$KERNEL_DEV_ENV_ROOT"
+    echo
+    echo "Directory Paths:"
+    echo "  OPEN_DIR=$OPEN_DIR"
+    echo "  INFRA_DIR=$INFRA_DIR"
+    echo "  SHARED_DIR=$SHARED_DIR"
+    echo
+    echo "Source Directories:"
+    echo "  KERNEL_SRC_DIR=$KERNEL_SRC_DIR"
+    echo "  SYZKALLER_SRC_DIR=$SYZKALLER_SRC_DIR"
+    echo
+    echo "Build Directories:"
+    echo "  KERNEL_BUILD_DIR=$KERNEL_BUILD_DIR"
+    echo "  SYZKALLER_BUILD_DIR=$SYZKALLER_BUILD_DIR"
+    echo
+    echo "VM/Runtime Directories:"
+    echo "  VM_LINUX_DIR=$VM_LINUX_DIR"
+    echo "  VM_SYZKALLER_DIR=$VM_SYZKALLER_DIR"
+    echo
+    echo "Log Directories:"
+    echo "  LOG_DIR=$LOG_DIR"
+    echo
+    echo "Script Directories:"
+    echo "  SCRIPTS_QEMU_DIR=$SCRIPTS_QEMU_DIR"
+    echo "  SCRIPTS_SYZKALLER_DIR=$SCRIPTS_SYZKALLER_DIR"
+    echo
+    echo "Shared Directories:"
+    echo "  SHARED_SYZKALLER_DIR=$SHARED_SYZKALLER_DIR"
+    echo
+    echo "Kernel Build Environment:"
+    echo "  KSRCDIR=$KSRCDIR"
+    echo "  KBUILDDIR=$KBUILDDIR"
+    echo
+    echo "Build Profile:"
+    echo "  BUILD_PROFILE=${BUILD_PROFILE:-mainline}"
+    echo
+    echo "=== End of Variables ==="
+}
+
