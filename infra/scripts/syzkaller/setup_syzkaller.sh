@@ -45,7 +45,8 @@ echo
 echo "1. Creating directories..."
 mkdir -p "$SRC_DIR" "$BUILD_DIR/bin" "$SHARED_DIR/workdir" "$SHARED_DIR/corpus" "$SHARED_DIR/crashes" "$IMAGE_DIR"
 
-# Check for existing Syzkaller config files
+# Check for existing Syzkaller config files and create default if needed
+DEFAULT_CONFIG_FILE="$SHARED_DIR/syzkaller_manager.cfg"
 EXISTING_CONFIGS=()
 if [ -d "$SHARED_DIR" ]; then
     while IFS= read -r -d '' file; do
@@ -55,11 +56,63 @@ fi
 
 if [ ${#EXISTING_CONFIGS[@]} -gt 0 ]; then
     echo
-    echo "Note: Found existing Syzkaller config file(s):"
+    echo "Found existing Syzkaller config file(s):"
     for cfg in "${EXISTING_CONFIGS[@]}"; do
         echo "  - $(basename "$cfg")"
     done
-    echo "  These will be preserved. Use run_syzkaller.sh to manage config files."
+    
+    # Check if default config already exists
+    if [ ! -f "$DEFAULT_CONFIG_FILE" ]; then
+        # Ask user if they want to create default config
+        if [ -t 0 ] && [ -z "$CI" ]; then
+            echo -n "Create default config file ($(basename "$DEFAULT_CONFIG_FILE"))? [y/N]: "
+            read -r response
+            if [[ "$response" =~ ^[Yy]$ ]]; then
+                CREATE_DEFAULT=true
+            else
+                CREATE_DEFAULT=false
+            fi
+        else
+            # Non-interactive: don't create if other configs exist
+            CREATE_DEFAULT=false
+            echo "  Skipping default config creation (other configs exist)."
+        fi
+    else
+        CREATE_DEFAULT=false
+        echo "  Default config already exists: $(basename "$DEFAULT_CONFIG_FILE")"
+    fi
+    echo
+else
+    # No existing configs, create default
+    CREATE_DEFAULT=true
+fi
+
+# Generate default config file if needed
+if [ "$CREATE_DEFAULT" = true ] && [ ! -f "$DEFAULT_CONFIG_FILE" ]; then
+    # Need kernel build path for config - use a placeholder that will be updated
+    KERNEL_BUILD_PLACEHOLDER="$KERNEL_BUILD_DIR/syzkaller"
+    echo "Creating default Syzkaller config file..."
+    cat > "$DEFAULT_CONFIG_FILE" << EOF
+{
+	"target": "linux/amd64",
+	"http": "127.0.0.1:56741",
+	"workdir": "$SHARED_DIR/workdir",
+	"kernel_obj": "$KERNEL_BUILD_PLACEHOLDER",
+	"image": "$IMAGE_DIR/trixie.img",
+	"sshkey": "$IMAGE_DIR/trixie.id_rsa",
+	"syzkaller": "$BUILD_DIR",
+	"procs": 8,
+	"type": "qemu",
+	"vm": {
+		"count": 4,
+		"kernel": "$KERNEL_BUILD_PLACEHOLDER/arch/x86/boot/bzImage",
+		"cpu": 2,
+		"mem": 2048
+	}
+}
+EOF
+    echo "  Created: $(basename "$DEFAULT_CONFIG_FILE")"
+    echo "  Note: Update kernel_obj and vm.kernel paths after building the kernel."
     echo
 fi
 

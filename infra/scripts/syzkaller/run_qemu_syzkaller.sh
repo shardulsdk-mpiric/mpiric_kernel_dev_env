@@ -51,9 +51,10 @@ fi
 
 mkdir -p "$LOG_DIR"
 
-# Check for existing Syzkaller config files
-EXISTING_CONFIGS=()
+# Check for existing Syzkaller config files and create default if needed
 CONFIG_CHECK_DIR="$SHARED_SYZKALLER_DIR"
+DEFAULT_CONFIG_FILE="$CONFIG_CHECK_DIR/syzkaller_manager.cfg"
+EXISTING_CONFIGS=()
 if [ -d "$CONFIG_CHECK_DIR" ]; then
     while IFS= read -r -d '' file; do
         EXISTING_CONFIGS+=("$file")
@@ -61,11 +62,61 @@ if [ -d "$CONFIG_CHECK_DIR" ]; then
 fi
 
 if [ ${#EXISTING_CONFIGS[@]} -gt 0 ]; then
-    echo "Note: Found existing Syzkaller config file(s):"
+    echo "Found existing Syzkaller config file(s):"
     for cfg in "${EXISTING_CONFIGS[@]}"; do
         echo "  - $(basename "$cfg")"
     done
-    echo "  Use run_syzkaller.sh to start fuzzing with these configs."
+    
+    # Check if default config already exists
+    if [ ! -f "$DEFAULT_CONFIG_FILE" ]; then
+        # Ask user if they want to create default config
+        if [ -t 0 ] && [ -z "$CI" ]; then
+            echo -n "Create default config file ($(basename "$DEFAULT_CONFIG_FILE"))? [y/N]: "
+            read -r response
+            if [[ "$response" =~ ^[Yy]$ ]]; then
+                CREATE_DEFAULT=true
+            else
+                CREATE_DEFAULT=false
+            fi
+        else
+            # Non-interactive: don't create if other configs exist
+            CREATE_DEFAULT=false
+            echo "  Skipping default config creation (other configs exist)."
+        fi
+    else
+        CREATE_DEFAULT=false
+        echo "  Default config already exists: $(basename "$DEFAULT_CONFIG_FILE")"
+    fi
+    echo
+else
+    # No existing configs, create default
+    CREATE_DEFAULT=true
+fi
+
+# Generate default config file if needed
+if [ "$CREATE_DEFAULT" = true ] && [ ! -f "$DEFAULT_CONFIG_FILE" ]; then
+    mkdir -p "$CONFIG_CHECK_DIR"
+    echo "Creating default Syzkaller config file..."
+    cat > "$DEFAULT_CONFIG_FILE" << EOF
+{
+	"target": "linux/amd64",
+	"http": "127.0.0.1:56741",
+	"workdir": "$CONFIG_CHECK_DIR/workdir",
+	"kernel_obj": "$KERNEL_BUILD",
+	"image": "$IMAGE",
+	"sshkey": "$SSH_KEY",
+	"syzkaller": "$SYZKALLER_BUILD_DIR",
+	"procs": 8,
+	"type": "qemu",
+	"vm": {
+		"count": 4,
+		"kernel": "$KERNEL",
+		"cpu": 2,
+		"mem": 2048
+	}
+}
+EOF
+    echo "  Created: $(basename "$DEFAULT_CONFIG_FILE")"
     echo
 fi
 
