@@ -51,6 +51,24 @@ fi
 
 mkdir -p "$LOG_DIR"
 
+# Check for existing Syzkaller config files
+EXISTING_CONFIGS=()
+CONFIG_CHECK_DIR="$SHARED_SYZKALLER_DIR"
+if [ -d "$CONFIG_CHECK_DIR" ]; then
+    while IFS= read -r -d '' file; do
+        EXISTING_CONFIGS+=("$file")
+    done < <(find "$CONFIG_CHECK_DIR" -maxdepth 1 -type f -name "*.cfg" -print0 2>/dev/null || true)
+fi
+
+if [ ${#EXISTING_CONFIGS[@]} -gt 0 ]; then
+    echo "Note: Found existing Syzkaller config file(s):"
+    for cfg in "${EXISTING_CONFIGS[@]}"; do
+        echo "  - $(basename "$cfg")"
+    done
+    echo "  Use run_syzkaller.sh to start fuzzing with these configs."
+    echo
+fi
+
 echo "Booting Syzkaller kernel: $KERNEL"
 echo "Image: $IMAGE"
 echo "Shared: $SHARED_DIR (9p → /mnt/host in guest)"

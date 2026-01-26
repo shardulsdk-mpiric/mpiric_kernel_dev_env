@@ -45,6 +45,24 @@ echo
 echo "1. Creating directories..."
 mkdir -p "$SRC_DIR" "$BUILD_DIR/bin" "$SHARED_DIR/workdir" "$SHARED_DIR/corpus" "$SHARED_DIR/crashes" "$IMAGE_DIR"
 
+# Check for existing Syzkaller config files
+EXISTING_CONFIGS=()
+if [ -d "$SHARED_DIR" ]; then
+    while IFS= read -r -d '' file; do
+        EXISTING_CONFIGS+=("$file")
+    done < <(find "$SHARED_DIR" -maxdepth 1 -type f -name "*.cfg" -print0 2>/dev/null || true)
+fi
+
+if [ ${#EXISTING_CONFIGS[@]} -gt 0 ]; then
+    echo
+    echo "Note: Found existing Syzkaller config file(s):"
+    for cfg in "${EXISTING_CONFIGS[@]}"; do
+        echo "  - $(basename "$cfg")"
+    done
+    echo "  These will be preserved. Use run_syzkaller.sh to manage config files."
+    echo
+fi
+
 echo "2. Installing dependencies..."
 if ! command -v go &> /dev/null; then
     echo "Installing Go..."
@@ -99,4 +117,4 @@ echo "  1. Build kernel:  $SCRIPTS_DIR/build_syzkaller_kernel.sh"
 echo "  2. Boot QEMU:     $SCRIPTS_DIR/run_qemu_syzkaller.sh"
 echo "  3. Run fuzzer:    $SCRIPTS_DIR/run_syzkaller.sh"
 echo "  4. SSH to guest:  ssh -i $IMAGE_DIR/trixie.id_rsa -p 10021 -o StrictHostKeyChecking=no root@localhost"
-echo "See: $BASE_DIR/open/vm/docs/linux/setup_syzkaller.md"
+echo "See: $OPEN_DIR/vm/docs/linux/setup_syzkaller.md"
