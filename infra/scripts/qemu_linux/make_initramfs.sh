@@ -1,8 +1,14 @@
 #!/bin/bash
 set -e
+
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../config.sh"
+
 INITRAMFS_DIR="/tmp/initramfs_root"
-OUT_DIR="/mnt/dev_ext_4tb/open/vm/linux"
-rm -rf $INITRAMFS_DIR && mkdir -p $INITRAMFS_DIR/{bin,dev,proc,sys,etc,root}
+OUT_DIR="$VM_LINUX_DIR"
+mkdir -p "$OUT_DIR"
+rm -rf "$INITRAMFS_DIR" && mkdir -p "$INITRAMFS_DIR"/{bin,dev,proc,sys,etc,root}
 
 # Copy static busybox
 BB="$(dpkg -L busybox-static | grep -m1 -E '/busybox$')"

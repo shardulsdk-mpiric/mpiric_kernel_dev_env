@@ -16,9 +16,10 @@ This environment is intentionally simple and evolves incrementally as needs grow
 
 ## Directory Layout (High-level)
 
-This VM setup depends on the following fixed layout on the external dev disk:
+This VM setup uses the following directory structure (relative to workspace root):
 
-/mnt/dev_ext_4tb/
+```
+<workspace-root>/
 ├── open/
 │ ├── src/
 │ │ ├── kernel/linux   # Official Linux kernel source (git)
@@ -31,8 +32,12 @@ This VM setup depends on the following fixed layout on the external dev disk:
 │ │ └── syzkaller/     # Debian Trixie image (trixie.img, trixie.id_rsa)
 │ └── logs/qemu/
 └── infra/scripts/
+    ├── config.sh      # Path configuration (auto-detects workspace root)
     ├── qemu_linux/    # Generic kernel boot (run_qemu_kernel.sh, make_initramfs.sh)
     └── syzkaller/     # Syzkaller setup and run (see setup_syzkaller.md)
+```
+
+The workspace root is auto-detected from script locations, or can be set via the `KERNEL_DEV_ENV_ROOT` environment variable.
 
 
 **Important rule**
@@ -60,11 +65,14 @@ QEMU scripts consume kernel artifacts from `open/build`, never from the source t
 
 1. **Build kernel (out-of-tree)**
    Kernel is built under:
-
-/mnt/dev_ext_4tb/open/build/linux/<profile>/
+   ```
+   open/build/linux/<profile>/
+   ```
 
 2. **Boot kernel in QEMU**
-infra/scripts/qemu_linux/run_qemu_kernel.sh
+   ```bash
+   ./infra/scripts/qemu_linux/run_qemu_kernel.sh
+   ```
 
 3. **Iterate**
 - rebuild kernel
@@ -104,8 +112,9 @@ Other future extensions:
 ## Logging
 
 All QEMU output is logged under:
-
-/mnt/dev_ext_4tb/open/logs/qemu/
+```
+open/logs/qemu/
+```
 
 
 Logs are kept per run to allow:
@@ -119,8 +128,8 @@ Logs are kept per run to allow:
 
 - All mounts are UUID-based.
 - Scripts are idempotent and safe to re-run.
-- The entire setup is portable across machines where the disk is mounted at:
-/mnt/dev_ext_4tb
+- The entire setup is portable across machines - workspace root is auto-detected.
+- Override workspace root by setting `KERNEL_DEV_ENV_ROOT` environment variable if needed.
 
 
 ---

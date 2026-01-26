@@ -10,10 +10,14 @@
 
 set -e
 
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../config.sh"
+
 # Configuration
 INITRAMFS_DIR="/tmp/initramfs_syzkaller"
-OUT_DIR="/mnt/dev_ext_4tb/open/vm/linux"
-SHARED_DIR="/mnt/dev_ext_4tb/shared"
+OUT_DIR="$VM_LINUX_DIR"
+SHARED_DIR="$SHARED_DIR"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -125,8 +129,8 @@ echo "  • Symlinks in /usr/local/bin/ for easy access"
 echo "  • Working directory setup in shared folder"
 echo
 echo "To use with Syzkaller:"
-echo "  1. Run: /mnt/dev_ext_4tb/infra/scripts/syzkaller/setup_syzkaller.sh"
-echo "  2. Boot: /mnt/dev_ext_4tb/infra/scripts/syzkaller/run_qemu_syzkaller.sh"
+echo "  1. Run: $SCRIPTS_SYZKALLER_DIR/setup_syzkaller.sh"
+echo "  2. Boot: $SCRIPTS_SYZKALLER_DIR/run_qemu_syzkaller.sh"
 echo
 echo "To use standard initramfs:"
-echo "  /mnt/dev_ext_4tb/infra/scripts/qemu_linux/run_qemu_kernel.sh"
+echo "  $SCRIPTS_QEMU_DIR/run_qemu_kernel.sh"

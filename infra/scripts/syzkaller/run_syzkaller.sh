@@ -7,12 +7,15 @@
 
 set -e
 
-BASE_DIR="/mnt/dev_ext_4tb"
-SYZKALLER_BUILD="$BASE_DIR/open/build/syzkaller"
-KERNEL_BUILD="$BASE_DIR/open/build/linux/syzkaller"
-IMAGE_DIR="$BASE_DIR/open/vm/syzkaller"
-SHARED_DIR="$BASE_DIR/shared/syzkaller"
-SCRIPTS_DIR="$BASE_DIR/infra/scripts/syzkaller"
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../config.sh"
+
+SYZKALLER_BUILD="$SYZKALLER_BUILD_DIR"
+KERNEL_BUILD="$KERNEL_BUILD_DIR/syzkaller"
+IMAGE_DIR="$VM_SYZKALLER_DIR"
+SHARED_DIR="$SHARED_SYZKALLER_DIR"
+SCRIPTS_DIR="$SCRIPTS_SYZKALLER_DIR"
 
 echo "=== Starting Syzkaller ==="
 echo "Manager: $SYZKALLER_BUILD/bin/syz-manager"
@@ -37,6 +40,29 @@ fi
 
 mkdir -p "$SHARED_DIR/workdir"
 cd "$SHARED_DIR"
-"$SYZKALLER_BUILD/bin/syz-manager" -config "$SCRIPTS_DIR/syzkaller_manager.cfg"
+
+# Generate config file dynamically
+CONFIG_FILE="$SHARED_DIR/syzkaller_manager.cfg"
+cat > "$CONFIG_FILE" << EOF
+{
+	"target": "linux/amd64",
+	"http": "127.0.0.1:56741",
+	"workdir": "$SHARED_DIR/workdir",
+	"kernel_obj": "$KERNEL_BUILD",
+	"image": "$IMAGE_DIR/trixie.img",
+	"sshkey": "$IMAGE_DIR/trixie.id_rsa",
+	"syzkaller": "$SYZKALLER_BUILD",
+	"procs": 8,
+	"type": "qemu",
+	"vm": {
+		"count": 4,
+		"kernel": "$KERNEL_BUILD/arch/x86/boot/bzImage",
+		"cpu": 2,
+		"mem": 2048
+	}
+}
+EOF
+
+"$SYZKALLER_BUILD/bin/syz-manager" -config "$CONFIG_FILE"
 
 echo "Syzkaller manager stopped."

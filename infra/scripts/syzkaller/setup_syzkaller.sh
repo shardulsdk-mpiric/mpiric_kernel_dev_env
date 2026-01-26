@@ -24,13 +24,16 @@
 
 set -e
 
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../config.sh"
+
 SYZKALLER_VERSION="${SYZKALLER_VERSION:-master}"
-BASE_DIR="${BASE_DIR:-/mnt/dev_ext_4tb}"
-SRC_DIR="$BASE_DIR/open/src/syzkaller"
-BUILD_DIR="$BASE_DIR/open/build/syzkaller"
-SHARED_DIR="$BASE_DIR/shared/syzkaller"
-IMAGE_DIR="$BASE_DIR/open/vm/syzkaller"
-SCRIPTS_DIR="$BASE_DIR/infra/scripts/syzkaller"
+SRC_DIR="$SYZKALLER_SRC_DIR"
+BUILD_DIR="$SYZKALLER_BUILD_DIR"
+SHARED_DIR="$SHARED_SYZKALLER_DIR"
+IMAGE_DIR="$VM_SYZKALLER_DIR"
+SCRIPTS_DIR="$SCRIPTS_SYZKALLER_DIR"
 
 echo "=== Syzkaller Setup ==="
 echo "Source: $SRC_DIR"
@@ -87,7 +90,7 @@ if [ ! -f "$BUILD_DIR/bin/syz-manager" ]; then
 fi
 
 echo "6. Creating Debian Trixie image..."
-BASE_DIR="$BASE_DIR" "$SCRIPTS_DIR/create_syzkaller_image.sh"
+"$SCRIPTS_DIR/create_syzkaller_image.sh"
 
 echo
 echo "=== Syzkaller Setup Complete ==="

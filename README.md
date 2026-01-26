@@ -14,20 +14,21 @@ This repository provides a complete environment for Linux kernel development, te
 ## 📁 Directory Structure
 
 ```
-/mnt/dev_ext_4tb/                    # Root (assumes external disk mount)
-├── open/                           # Main collaborative development area
-│   ├── src/kernel/linux/          # Official Linux kernel source (git)
-│   │   └── tools/scripts/linux/   # Kernel development tools (apply_configs.sh)
-│   │       └── configs/to_load/  # Kernel config files to apply
+<workspace-root>/                   # Repository root (auto-detected or set via KERNEL_DEV_ENV_ROOT)
+├── open/                          # Main collaborative development area
+│   ├── src/kernel/linux/         # Official Linux kernel source (git)
+│   │   └── tools/scripts/linux/  # Kernel development tools (apply_configs.sh)
+│   │       └── configs/to_load/   # Kernel config files to apply
 │   ├── build/linux/<profile>/     # Out-of-tree kernel builds (bzImage, modules)
 │   ├── vm/linux/                  # QEMU runtime assets (initramfs, configs)
 │   │   └── docs/linux/            # QEMU environment documentation
 │   └── logs/qemu/                 # QEMU boot logs and test results
 ├── infra/                         # Infrastructure and automation scripts
-│   └── scripts/qemu_linux/        # QEMU kernel testing scripts
+│   └── scripts/                   # Scripts and configuration
+│       ├── config.sh              # Path configuration (auto-detects workspace root)
+│       ├── qemu_linux/            # QEMU kernel testing scripts
+│       └── syzkaller/             # Syzkaller setup and run scripts
 ├── shared/                        # Cross-domain shared resources
-├── main_pc_data/                  # Local machine-specific data
-├── personal/                      # Personal experiments and notes
 ├── TODO.md                        # Development roadmap and task tracking
 └── README.md                      # This file
 ```
@@ -37,21 +38,28 @@ This repository provides a complete environment for Linux kernel development, te
 ### Prerequisites
 
 - Ubuntu 22.04+ (x86_64 host)
-- External disk mounted at `/mnt/dev_ext_4tb`
 - Basic development tools (git, make, etc.)
+- Sufficient disk space (~50GB+ for kernel builds)
 
 ### Initial Setup
 
-1. **Clone and setup the environment:**
+1. **Clone the repository:**
    ```bash
-   # Ensure you're in the correct directory
-   cd /mnt/dev_ext_4tb
-
-   # Run the one-time setup script
-   ./open/vm/setup_qemu_for_local_kernel.sh
+   git clone <repository-url>
+   cd <workspace-directory>
    ```
 
-2. **Get the Linux kernel source:**
+2. **Run the one-time setup script:**
+   ```bash
+   # The script auto-detects the workspace root
+   ./open/vm/setup_qemu_for_local_kernel.sh
+   
+   # Or set workspace root explicitly (optional):
+   # export KERNEL_DEV_ENV_ROOT=/path/to/workspace
+   # ./open/vm/setup_qemu_for_local_kernel.sh
+   ```
+
+3. **Get the Linux kernel source:**
    ```bash
    cd open/src/kernel
    git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
@@ -59,19 +67,20 @@ This repository provides a complete environment for Linux kernel development, te
    # Optional: checkout a specific version or branch
    ```
 
-3. **Build your first kernel:**
+4. **Build your first kernel:**
    ```bash
    # Configure (out-of-tree build)
-   make O=/mnt/dev_ext_4tb/open/build/linux/mainline defconfig
+   # Scripts auto-detect workspace root, or use relative paths
+   make O=../../build/linux/mainline defconfig
 
    # Build
-   make O=/mnt/dev_ext_4tb/open/build/linux/mainline -j$(nproc)
+   make O=../../build/linux/mainline -j$(nproc)
    ```
 
-4. **Test the kernel:**
+5. **Test the kernel:**
    ```bash
-   # Boot with QEMU
-   /mnt/dev_ext_4tb/infra/scripts/qemu_linux/run_qemu_kernel.sh
+   # Boot with QEMU (auto-detects paths)
+   ./infra/scripts/qemu_linux/run_qemu_kernel.sh
 
    # Connect via SSH (in another terminal)
    ssh -p 2222 root@localhost
@@ -85,11 +94,11 @@ This repository provides a complete environment for Linux kernel development, te
 # 1. Make kernel changes in source
 cd open/src/kernel/linux
 
-# 2. Build out-of-tree
-make O=/mnt/dev_ext_4tb/open/build/linux/mainline -j$(nproc)
+# 2. Build out-of-tree (relative paths work from repo root)
+make O=../../build/linux/mainline -j$(nproc)
 
-# 3. Test with QEMU
-/mnt/dev_ext_4tb/infra/scripts/qemu_linux/run_qemu_kernel.sh
+# 3. Test with QEMU (auto-detects workspace root)
+./infra/scripts/qemu_linux/run_qemu_kernel.sh
 
 # 4. Iterate: modify → build → test
 ```
@@ -110,14 +119,14 @@ The environment includes a script to manage kernel configuration files across mu
 
 ```bash
 # Apply configs to latest build directory (default)
-/mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh
+./open/src/kernel/tools/scripts/linux/apply_configs.sh
 
 # Apply configs to specific build directory
-/mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh \
-    --build-dir /mnt/dev_ext_4tb/open/build/kernel/linux/mpiric/2026_01_25_142350_010_v7_test
+./open/src/kernel/tools/scripts/linux/apply_configs.sh \
+    --build-dir open/build/linux/mainline
 
 # Apply standard configs + selective Syzbot config
-/mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh \
+./open/src/kernel/tools/scripts/linux/apply_configs.sh \
     --syzbot-config /path/to/syzbot_reported.config
 ```
 
@@ -134,16 +143,16 @@ After applying configs, run `make olddefconfig` in your build directory to resol
 ```bash
 # 1. Setup Syzkaller + Debian Trixie image (requires Docker)
 sudo systemctl start docker  # if not running
-/mnt/dev_ext_4tb/infra/scripts/syzkaller/setup_syzkaller.sh
+./infra/scripts/syzkaller/setup_syzkaller.sh
 
 # 2. Build Syzkaller-compatible kernel
-/mnt/dev_ext_4tb/infra/scripts/syzkaller/build_syzkaller_kernel.sh
+./infra/scripts/syzkaller/build_syzkaller_kernel.sh
 
 # 3. Boot QEMU with Debian image
-/mnt/dev_ext_4tb/infra/scripts/syzkaller/run_qemu_syzkaller.sh
+./infra/scripts/syzkaller/run_qemu_syzkaller.sh
 
 # 4. Run syzkaller manager (separate terminal)
-/mnt/dev_ext_4tb/infra/scripts/syzkaller/run_syzkaller.sh
+./infra/scripts/syzkaller/run_syzkaller.sh
 
 # SSH to guest: ssh -i open/vm/syzkaller/trixie.id_rsa -p 10021 root@localhost
 ```
@@ -210,7 +219,7 @@ See [TODO.md](TODO.md) for detailed roadmap and planned improvements.
 - External storage with sufficient space (~50GB+ for kernel builds)
 
 ### Storage Layout
-The environment assumes an external disk mounted at `/mnt/dev_ext_4tb`. If using a different mount point, scripts will need adjustment.
+The environment auto-detects the workspace root from the repository location. You can override this by setting the `KERNEL_DEV_ENV_ROOT` environment variable. All paths are relative to the workspace root.
 
 ## 🆘 Troubleshooting
 

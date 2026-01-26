@@ -1,12 +1,13 @@
 #!/bin/bash
 
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../config.sh"
+
 # Defaults
-DISK="/mnt/dev_ext_4tb"
-BUILD_DIR="$DISK/open/build/linux/mainline"
-VM_DIR="$DISK/open/vm/linux"
-LOG_DIR="$DISK/open/logs/qemu"
+BUILD_DIR="$KERNEL_BUILD_DIR/mainline"
 KERNEL="$BUILD_DIR/arch/x86/boot/bzImage"
-INITRD="$VM_DIR/initramfs.cpio.gz"
+INITRD="$VM_LINUX_DIR/initramfs.cpio.gz"
 MEM="2G"
 CPUS="2"
 SSH_PORT="2222"
@@ -43,6 +44,7 @@ QEMU_CMD="qemu-system-x86_64 \
     -serial mon:stdio \
     $SNAPSHOT"
 
+mkdir -p "$LOG_DIR"
 echo "Booting Kernel: $KERNEL"
 echo "Logging to: $LOG_DIR/qemu_$(date +%F_%T).log"
 

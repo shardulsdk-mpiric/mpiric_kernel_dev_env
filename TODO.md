@@ -25,14 +25,18 @@ This is a minimal, terminal-only development environment for Linux kernel upstre
 **Goal:** Make the environment portable across different systems, not tied to `/mnt/dev_ext_4tb`.
 
 **Tasks:**
-- [ ] Implement environment variable-based configuration system
-- [ ] Add `setup.sh` script to detect and configure paths automatically
-- [ ] Replace hardcoded `/mnt/dev_ext_4tb` with configurable base directory
-- [ ] Add validation for required directories and permissions
-- [ ] Document installation process for new machines
-- [ ] Support relative paths for development on different filesystems
+- [x] Implement environment variable-based configuration system
+- [x] Auto-detect workspace root from script locations
+- [x] Replace hardcoded `/mnt/dev_ext_4tb` with configurable base directory
+- [x] Update all scripts to use config system
+- [x] Update documentation to use generic paths
+- [x] Support relative paths for development on different filesystems
+- [ ] Add validation for required directories and permissions (non-blocking)
+- [ ] Create helper script for workspace root validation (non-blocking)
 
 **Rationale:** Current setup is tightly coupled to specific mount point, limiting portability.
+
+**Status:** ✅ Completed. All scripts now use `infra/scripts/config.sh` which auto-detects workspace root. Override via `KERNEL_DEV_ENV_ROOT` environment variable if needed.
 
 ### 2. Syzkaller Integration
 
@@ -54,14 +58,16 @@ This is a minimal, terminal-only development environment for Linux kernel upstre
 **Goal:** Enable seamless file sharing between host and guest systems.
 
 **Tasks:**
-- [ ] Implement 9p/virtiofs shared directory mounting
-- [ ] Configure shared directory at standardized location (`shared/` in workspace root)
-- [ ] Add shared directory to QEMU command line
-- [ ] Create scripts to mount shared directory in guest automatically
-- [ ] Ensure shared directory permissions work for both host and guest
-- [ ] Add shared directory to initramfs or persistent rootfs
+- [x] Implement 9p/virtiofs shared directory mounting (Syzkaller setup)
+- [x] Configure shared directory at standardized location (`shared/` in workspace root)
+- [x] Add shared directory to QEMU command line (Syzkaller QEMU script)
+- [x] Create scripts to mount shared directory in guest automatically (Debian image fstab)
+- [ ] Ensure shared directory permissions work for both host and guest (non-blocking improvement)
+- [ ] Add shared directory support to generic initramfs boot (non-blocking)
 
 **Rationale:** Essential for transferring test cases, logs, and artifacts between host/guest.
+
+**Status:** ✅ Mostly complete. Shared directory works for Syzkaller setup. Generic initramfs support can be added later if needed.
 
 ### 4. SSH Connection Management
 
@@ -136,7 +142,21 @@ This is a minimal, terminal-only development environment for Linux kernel upstre
 
 ## Low Priority Tasks
 
-### 9. CI/CD Integration
+### 9. Workspace Validation and Health Checks
+
+**Goal:** Provide tools to validate workspace setup and detect common issues.
+
+**Tasks:**
+- [ ] Create `validate_workspace.sh` script to check directory structure
+- [ ] Add validation for required tools (qemu, docker, etc.)
+- [ ] Check permissions on key directories
+- [ ] Verify kernel source and build directories are properly configured
+- [ ] Add health check for Syzkaller setup completeness
+- [ ] Provide helpful error messages for common misconfigurations
+
+**Rationale:** Helps new users quickly identify setup issues without manual debugging.
+
+### 10. CI/CD Integration
 
 **Goal:** Enable automated testing pipelines.
 
@@ -149,7 +169,7 @@ This is a minimal, terminal-only development environment for Linux kernel upstre
 
 **Rationale:** Automated validation reduces manual testing burden.
 
-### 10. Documentation Improvements
+### 11. Documentation Improvements
 
 **Goal:** Comprehensive documentation for contributors.
 
@@ -162,7 +182,7 @@ This is a minimal, terminal-only development environment for Linux kernel upstre
 
 **Rationale:** Good documentation is essential for collaborative development.
 
-### 11. Performance Optimization
+### 12. Performance Optimization
 
 **Goal:** Improve boot times and resource usage.
 
@@ -175,7 +195,7 @@ This is a minimal, terminal-only development environment for Linux kernel upstre
 
 **Rationale:** Faster iteration improves development productivity.
 
-### 12. Security Hardening
+### 13. Security Hardening
 
 **Goal:** Ensure secure development practices.
 

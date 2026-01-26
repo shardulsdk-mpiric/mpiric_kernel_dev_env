@@ -9,14 +9,14 @@
 
 set -e
 
-DISK="/mnt/dev_ext_4tb"
-SHARED_DIR="$DISK/shared"
-KERNEL_BUILD="$DISK/open/build/linux/syzkaller"
-IMAGE_DIR="$DISK/open/vm/syzkaller"
-LOG_DIR="$DISK/open/logs/qemu"
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../config.sh"
+
+KERNEL_BUILD="$KERNEL_BUILD_DIR/syzkaller"
 KERNEL="$KERNEL_BUILD/arch/x86/boot/bzImage"
-IMAGE="$IMAGE_DIR/trixie.img"
-SSH_KEY="$IMAGE_DIR/trixie.id_rsa"
+IMAGE="$VM_SYZKALLER_DIR/trixie.img"
+SSH_KEY="$VM_SYZKALLER_DIR/trixie.id_rsa"
 SSH_PORT="10021"
 MEM="2G"
 CPUS="2"
@@ -71,5 +71,5 @@ qemu-system-x86_64 \
     -virtfs "local,path=$SHARED_DIR,mount_tag=hostshare,security_model=mapped,id=hostshare" \
     -enable-kvm -cpu host \
     -nographic \
-    -pidfile "$IMAGE_DIR/vm.pid" \
+    -pidfile "$VM_SYZKALLER_DIR/vm.pid" \
     2>&1 | tee "$LOG_DIR/qemu_syzkaller_$(date +%s).log"

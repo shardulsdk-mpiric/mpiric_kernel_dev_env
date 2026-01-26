@@ -13,9 +13,12 @@
 
 set -e
 
-BASE_DIR="${BASE_DIR:-/mnt/dev_ext_4tb}"
-SRC_DIR="$BASE_DIR/open/src/syzkaller"
-IMAGE_DIR="$BASE_DIR/open/vm/syzkaller"
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../config.sh"
+
+SRC_DIR="$SYZKALLER_SRC_DIR"
+IMAGE_DIR="$VM_SYZKALLER_DIR"
 
 mkdir -p "$IMAGE_DIR"
 cd "$IMAGE_DIR"
@@ -79,6 +82,6 @@ rmdir "$MOUNT_POINT"
 
 echo "Image created: $IMAGE_DIR/trixie.img"
 echo "SSH key: $IMAGE_DIR/trixie.id_rsa"
-echo "Shared dir $BASE_DIR/shared → /mnt/host in guest (automount on first access)."
+echo "Shared dir $SHARED_DIR → /mnt/host in guest (automount on first access)."
 echo "Swap file: 64MB /swapfile (auto-enabled at boot for syz-executor)."
 echo "SSH: ssh -i $IMAGE_DIR/trixie.id_rsa -p PORT -o StrictHostKeyChecking=no root@localhost"

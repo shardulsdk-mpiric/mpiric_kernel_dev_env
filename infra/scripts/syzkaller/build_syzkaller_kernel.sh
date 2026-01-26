@@ -10,9 +10,12 @@
 
 set -e
 
-BASE_DIR="/mnt/dev_ext_4tb"
-SRC_DIR="$BASE_DIR/open/src/kernel/linux"
-BUILD_DIR="$BASE_DIR/open/build/linux/syzkaller"
+# Load configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../config.sh"
+
+SRC_DIR="$KERNEL_SRC_DIR"
+BUILD_DIR="$KERNEL_BUILD_DIR/syzkaller"
 
 echo "=== Building Syzkaller-Compatible Kernel ==="
 echo "Source: $SRC_DIR"
@@ -51,4 +54,4 @@ echo "Syzkaller kernel built successfully!"
 echo "Kernel: $BUILD_DIR/arch/x86/boot/bzImage"
 echo "vmlinux: $BUILD_DIR/vmlinux"
 echo
-echo "To test: $BASE_DIR/infra/scripts/syzkaller/run_qemu_syzkaller.sh"
+echo "To test: $SCRIPTS_SYZKALLER_DIR/run_qemu_syzkaller.sh"

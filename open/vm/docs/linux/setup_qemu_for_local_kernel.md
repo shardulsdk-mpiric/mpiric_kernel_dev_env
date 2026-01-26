@@ -18,7 +18,7 @@ Setup Process
 
 The setup is now streamlined. Run the setup script once:
 
-    /mnt/dev_ext_4tb/open/vm/setup_qemu_for_local_kernel.sh
+    ./open/vm/setup_qemu_for_local_kernel.sh
 
 This script will:
 - Install required Ubuntu packages (qemu, build tools, busybox-static)
@@ -37,31 +37,31 @@ Kernel Building (Out-of-Tree)
 
 Run this from your kernel source directory:
 
-    # 1. Configure
-    make O=/mnt/dev_ext_4tb/open/build/linux/mainline defconfig
+    # 1. Configure (using relative paths from repo root)
+    make O=../../build/linux/mainline defconfig
 
     # 2. Optional: Apply custom configs
     # Use the apply_configs.sh script to apply configs from config files:
-    /mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh \
-        --build-dir /mnt/dev_ext_4tb/open/build/linux/mainline
+    ../../tools/scripts/linux/apply_configs.sh \
+        --build-dir ../../build/linux/mainline
     
     # Or let it auto-detect the latest build directory:
-    /mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh
+    ../../tools/scripts/linux/apply_configs.sh
     
     # Place config files in: open/src/kernel/tools/configs/to_load/
     # See README.md for detailed usage and Syzbot config support.
 
     # 3. Resolve dependencies (after applying configs)
-    make O=/mnt/dev_ext_4tb/open/build/linux/mainline olddefconfig
+    make O=../../build/linux/mainline olddefconfig
 
     # 4. Optional: Enable KVM/Virtio flags for better QEMU performance
     # Edit .config or use scripts/config
 
     # 5. Build
-    make O=/mnt/dev_ext_4tb/open/build/linux/mainline -j$(nproc)
+    make O=../../build/linux/mainline -j$(nproc)
 
 The kernel artifact will be at:
-`/mnt/dev_ext_4tb/open/build/linux/mainline/arch/x86/boot/bzImage`
+`open/build/linux/mainline/arch/x86/boot/bzImage`
 
 Testing Workflow
 ================
@@ -69,10 +69,14 @@ Testing Workflow
 1. **Build your kernel** (as above)
 
 2. **Boot with QEMU:**
-   `/mnt/dev_ext_4tb/infra/scripts/qemu_linux/run_qemu_kernel.sh`
+   ```bash
+   ./infra/scripts/qemu_linux/run_qemu_kernel.sh
+   ```
 
 3. **Connect via SSH** (when VM is running):
-   `ssh -p 2222 root@localhost`
+   ```bash
+   ssh -p 2222 root@localhost
+   ```
 
 Key Features
 ============
@@ -86,8 +90,8 @@ Key Features
 Script Locations
 ================
 
-- Setup script: `/mnt/dev_ext_4tb/open/vm/setup_qemu_for_local_kernel.sh`
-- Initramfs builder: `/mnt/dev_ext_4tb/infra/scripts/qemu_linux/make_initramfs.sh`
-- QEMU launcher: `/mnt/dev_ext_4tb/infra/scripts/qemu_linux/run_qemu_kernel.sh`
-- Config manager: `/mnt/dev_ext_4tb/open/src/kernel/tools/scripts/linux/apply_configs.sh`
-- Documentation: `/mnt/dev_ext_4tb/open/vm/docs/linux/README.md`
+- Setup script: `open/vm/setup_qemu_for_local_kernel.sh`
+- Initramfs builder: `infra/scripts/qemu_linux/make_initramfs.sh`
+- QEMU launcher: `infra/scripts/qemu_linux/run_qemu_kernel.sh`
+- Config manager: `open/src/kernel/tools/scripts/linux/apply_configs.sh`
+- Documentation: `open/vm/docs/linux/README.md`

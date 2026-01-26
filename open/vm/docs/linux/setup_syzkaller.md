@@ -18,7 +18,7 @@ This guide covers setting up Syzkaller for Linux kernel fuzzing with QEMU and a 
 
 Run the setup script once:
 
-    /mnt/dev_ext_4tb/infra/scripts/syzkaller/setup_syzkaller.sh
+    ./infra/scripts/syzkaller/setup_syzkaller.sh
 
 This will:
 
@@ -34,25 +34,25 @@ This will:
 
 Build a Syzkaller-compatible kernel (defconfig + kvm_guest.config, KCOV, KASAN, etc.):
 
-    /mnt/dev_ext_4tb/infra/scripts/syzkaller/build_syzkaller_kernel.sh
+    ./infra/scripts/syzkaller/build_syzkaller_kernel.sh
 
 Output: `open/build/linux/syzkaller/arch/x86/boot/bzImage`, `vmlinux`
 
 ## Booting QEMU
 
-    /mnt/dev_ext_4tb/infra/scripts/syzkaller/run_qemu_syzkaller.sh
+    ./infra/scripts/syzkaller/run_qemu_syzkaller.sh
 
 Options: `--kernel`, `--image`, `--ssh-port` (default 10021).
 
-**Shared directory:** The host dir `/mnt/dev_ext_4tb/shared/` is always exported via 9p and auto-mounted in the guest at `/mnt/host` (on first access). No manual `mount` is needed.
+**Shared directory:** The host dir `shared/` (relative to workspace root) is always exported via 9p and auto-mounted in the guest at `/mnt/host` (on first access). No manual `mount` is needed.
 
 SSH into the guest:
 
-    ssh -i /mnt/dev_ext_4tb/open/vm/syzkaller/trixie.id_rsa -p 10021 -o StrictHostKeyChecking=no root@localhost
+    ssh -i open/vm/syzkaller/trixie.id_rsa -p 10021 -o StrictHostKeyChecking=no root@localhost
 
 ## Running Syzkaller
 
-    /mnt/dev_ext_4tb/infra/scripts/syzkaller/run_syzkaller.sh
+    ./infra/scripts/syzkaller/run_syzkaller.sh
 
 Manager UI: http://127.0.0.1:56741
 
