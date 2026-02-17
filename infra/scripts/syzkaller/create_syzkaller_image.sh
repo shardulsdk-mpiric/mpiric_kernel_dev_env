@@ -92,6 +92,13 @@ trap cleanup EXIT
 
 sudo mount -o loop trixie.img "$MOUNT_POINT"
 sudo mkdir -p "$MOUNT_POINT/mnt/host"
+# Ensure guest authorized_keys matches current key (fixes SSH if key was replaced or image copied)
+if [ -f "trixie.id_rsa.pub" ]; then
+    sudo mkdir -p "$MOUNT_POINT/root/.ssh"
+    cat trixie.id_rsa.pub | sudo tee "$MOUNT_POINT/root/.ssh/authorized_keys" > /dev/null
+    sudo chmod 700 "$MOUNT_POINT/root/.ssh"
+    sudo chmod 600 "$MOUNT_POINT/root/.ssh/authorized_keys"
+fi
 # Use fstab + x-systemd.automount to avoid 9p-at-boot race; mounts on first access to /mnt/host
 echo 'hostshare /mnt/host 9p trans=virtio,version=9p2000.L,noauto,x-systemd.automount 0 0' | \
     sudo tee -a "$MOUNT_POINT/etc/fstab" > /dev/null

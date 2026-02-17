@@ -28,18 +28,28 @@ You need a **syzkaller config file** (JSON) that points to your kernel build, im
 - **build_syzkaller_kernel.sh** – Build kernel with syzkaller-friendly config.
 - **run_qemu_syzkaller.sh** – Run QEMU with the syzkaller VM image (for manual testing or imaging).
 
-## Examples
+## Example config
+
+**syzkaller_manager_hfsplus.cfg** in this directory is a working example that:
+
+- Sets **vm.cmdline** to `net.ifnames=0` so the Debian guest uses the `eth0` interface name (required for networking when using the syzkaller create-image.sh image).
+- Targets the hfsplus subsystem via **experimental.focus_areas** (optional; adjust or remove if not needed).
+- Uses absolute paths for `kernel_obj`, `kernel`, `image`, `sshkey`, `workdir`, `syzkaller` — **copy the file and update these paths** for your workspace and kernel build.
+
+From repo root:
 
 ```bash
-# From repo root (after sourcing infra/scripts/config.sh and building kernel/image)
-
-# Long-running: start manager in screen (you provide the config)
-./infra/scripts/syzkaller/start_syzkaller_manager.sh -config shared/syzkaller/syzkaller_manager_hfsplus.cfg
+# Long-running: start manager in screen (use the example config; adjust paths in the .cfg for your setup)
+./infra/scripts/syzkaller/start_syzkaller_manager.sh -config infra/scripts/syzkaller/syzkaller_manager_hfsplus.cfg
 
 # Stop the manager
 ./infra/scripts/syzkaller/start_syzkaller_manager.sh --cleanup
 
-# One-off foreground run (script can generate or pick a config if you don't pass --config)
-./infra/scripts/syzkaller/run_syzkaller_foreground.sh
-./infra/scripts/syzkaller/run_syzkaller_foreground.sh --config shared/syzkaller/syzkaller_manager_hfsplus.cfg
+# One-off foreground run
+./infra/scripts/syzkaller/run_syzkaller_foreground.sh --config infra/scripts/syzkaller/syzkaller_manager_hfsplus.cfg
 ```
+
+## Troubleshooting
+
+- **SSH fails (exit 255) after VM boot:** The guest must accept the key in `sshkey` (e.g. `trixie.id_rsa`). If you recreated the key or the image was built elsewhere, re-run **create_syzkaller_image.sh** so the image’s `root/.ssh/authorized_keys` is updated to match the current `trixie.id_rsa.pub`. You can also verify from the host: `ssh -i open/vm/syzkaller/trixie.id_rsa -p PORT -o StrictHostKeyChecking=no -vv root@localhost` (use the port syzkaller prints in the log).
+- **networking.service fails in guest:** Ensure your syzkaller config has **vm.cmdline** including `net.ifnames=0` so the NIC is named `eth0` and matches `/etc/network/interfaces` in the image.
