@@ -92,13 +92,25 @@ trap cleanup EXIT
 
 sudo mount -o loop trixie.img "$MOUNT_POINT"
 sudo mkdir -p "$MOUNT_POINT/mnt/host"
-# Ensure guest authorized_keys matches current key (fixes SSH if key was replaced or image copied)
+# Ensure guest authorized_keys matches current key and sshd allows root pubkey login
 if [ -f "trixie.id_rsa.pub" ]; then
     sudo mkdir -p "$MOUNT_POINT/root/.ssh"
-    cat trixie.id_rsa.pub | sudo tee "$MOUNT_POINT/root/.ssh/authorized_keys" > /dev/null
+    # One key line + newline, no CR or trailing junk (sshd is strict)
+    KEY_LINE="$(tr -d '\r' < trixie.id_rsa.pub | head -1)"
+    printf '%s\n' "$KEY_LINE" | sudo tee "$MOUNT_POINT/root/.ssh/authorized_keys" > /dev/null
     sudo chmod 700 "$MOUNT_POINT/root/.ssh"
     sudo chmod 600 "$MOUNT_POINT/root/.ssh/authorized_keys"
+    sudo chown -R 0:0 "$MOUNT_POINT/root/.ssh"
 fi
+# Explicit sshd config so root key auth works (Debian defaults can differ)
+sudo mkdir -p "$MOUNT_POINT/etc/ssh/sshd_config.d"
+sudo tee "$MOUNT_POINT/etc/ssh/sshd_config.d/99-syzkaller.conf" > /dev/null << 'SSHDEOF'
+# Syzkaller: allow root login with public key only
+PermitRootLogin prohibit-password
+PubkeyAuthentication yes
+SSHDEOF
+sudo chown 0:0 "$MOUNT_POINT/etc/ssh/sshd_config.d/99-syzkaller.conf"
+sudo chmod 644 "$MOUNT_POINT/etc/ssh/sshd_config.d/99-syzkaller.conf"
 # Use fstab + x-systemd.automount to avoid 9p-at-boot race; mounts on first access to /mnt/host
 echo 'hostshare /mnt/host 9p trans=virtio,version=9p2000.L,noauto,x-systemd.automount 0 0' | \
     sudo tee -a "$MOUNT_POINT/etc/fstab" > /dev/null
