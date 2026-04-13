@@ -180,52 +180,40 @@ apply_standard_config() {
 }
 
 # Apply Syzbot config file (selective - only relevant configs)
-# Syzbot configs are full kernel configs with toolchain info, so we only
-# extract configs that are relevant for reproducing the issue
+# Syzbot configs are full kernel configs with toolchain info, so we
+# filter out build-specific lines and write the result directly as
+# .config.  This replaces the old approach of calling scripts/config
+# once per option (~10,000 invocations on a typical syzbot config).
 apply_syzbot_config() {
     local syzbot_file="$1"
     local build_dir="$2"
     local config_path="$build_dir/.config"
-    
+
     if [ ! -f "$syzbot_file" ]; then
         log_error "Syzbot config file not found: $syzbot_file"
         return 1
     fi
-    
-    log "Applying selective configs from Syzbot config: $syzbot_file"
-    log "Note: Only applying relevant configs (excluding toolchain/version info)"
-    
-    local count=0
-    local skipped=0
-    
-    while IFS= read -r line; do
-        # Skip comments and empty lines
-        [[ "$line" =~ ^# ]] && continue
-        [[ -z "${line// }" ]] && continue
-        
-        if [[ "$line" =~ ^([A-Za-z0-9_]+)=(.*)$ ]]; then
-            local config="${BASH_REMATCH[1]}"
-            local value="${BASH_REMATCH[2]}"
-            
-            # Skip toolchain/compiler/version configs
-            if [[ "$config" =~ ^CONFIG_(CC_|GCC_|CLANG_|AS_|LD_|LLD_|RUSTC_|PAHOLE_|CC_HAS_|TOOLS_|BUILDTIME_) ]]; then
-                ((skipped++)) || true
-                continue
-            fi
-            
-            # Skip LOCALVERSION and other build-specific configs
-            if [[ "$config" =~ ^CONFIG_(LOCALVERSION|INITRAMFS_) ]]; then
-                ((skipped++)) || true
-                continue
-            fi
-            
-            # Apply the config
-            apply_config_option "$config" "$value" "$config_path"
-            ((count++)) || true
-        fi
-    done < "$syzbot_file"
-    
-    log "Applied $count config options from Syzbot config (skipped $skipped toolchain/build-specific configs)"
+
+    log "Applying Syzbot config: $syzbot_file"
+
+    local total_lines skipped_lines kept_lines
+    total_lines=$(grep -cE '^(CONFIG_|# CONFIG_)' "$syzbot_file" || true)
+
+    # Back up the existing .config
+    cp "$config_path" "${config_path}.pre_syzbot"
+    log "Backed up existing config to ${config_path}.pre_syzbot"
+
+    # Filter out toolchain/compiler/build-specific lines and write
+    # directly.  Preserve "# CONFIG_* is not set" lines as they carry
+    # explicit disable decisions from syzbot's config.
+    grep -v -E '^CONFIG_(CC_|GCC_|CLANG_|AS_|LD_|LLD_|RUSTC_|PAHOLE_|CC_HAS_|TOOLS_|BUILDTIME_|LOCALVERSION|INITRAMFS_)' \
+        "$syzbot_file" > "$config_path"
+
+    kept_lines=$(grep -cE '^(CONFIG_|# CONFIG_)' "$config_path" || true)
+    skipped_lines=$((total_lines - kept_lines))
+
+    log "Wrote $kept_lines config options directly (skipped $skipped_lines toolchain/build-specific)"
+    log "Run 'make olddefconfig' to resolve dependencies against your toolchain"
 }
 
 # Main execution
